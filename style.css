@@ -348,3 +348,35 @@ body{
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:.001s !important; transition-duration:.001s !important; }
 }
+
+/* ---------- Distribución automática para pantallas grandes ---------- */
+@media (min-width: 760px){
+  .stage{
+    max-width:min(100vw, 1180px);
+  }
+
+  .topbar{
+    padding-left:36px;
+    padding-right:36px;
+  }
+
+  .screen{
+    padding-left:48px;
+    padding-right:48px;
+  }
+
+  .wheel-wrap{
+    width:min(42vw, 520px);
+    height:min(42vw, 520px);
+  }
+
+  .screen-result{
+    align-items:center;
+  }
+
+  .result-card,
+  .question-pill,
+  .learn-more-info{
+    width:min(100%, 620px);
+  }
+}

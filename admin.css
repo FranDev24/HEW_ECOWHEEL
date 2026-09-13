@@ -5,8 +5,16 @@
 
 .admin-body{
   overflow-y:auto;
+  overflow-x:hidden;
   height:auto;
   min-height:100dvh;
+}
+
+.admin-document,
+.admin-document body{
+  height:auto;
+  min-height:100%;
+  overflow-y:auto;
 }
 
 .admin-topline{
@@ -61,6 +69,30 @@
 }
 @media (max-width: 880px){
   .admin-grid{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px){
+  .admin-wrap{
+    padding:24px 16px 48px;
+  }
+
+  .admin-card{
+    padding:18px;
+    border-radius:16px;
+  }
+
+  .admin-title{
+    font-size:28px;
+  }
+
+  .admin-subtitle{
+    font-size:14px;
+  }
+
+  .preview-meta{
+    flex-direction:column;
+    gap:4px;
+  }
 }
 
 .admin-card{
