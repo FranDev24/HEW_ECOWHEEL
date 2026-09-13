@@ -262,17 +262,21 @@ textarea{
 .spin-letter-image{
   position:relative;
   z-index:2;
-  width:24%;
-  height:38%;
+  width:56%;
+  height:56%;
   object-fit:contain;
   object-position:center;
-  border-radius:10%;
+  border-radius:50%;
   mix-blend-mode:screen;
   overflow:visible;
-  filter:drop-shadow(0 0 6px rgba(56,228,242,.55)) drop-shadow(0 0 14px rgba(124,244,255,.24));
+  filter:brightness(1.15) drop-shadow(0 0 6px rgba(56,228,242,.75)) drop-shadow(0 0 14px rgba(124,244,255,.35)) drop-shadow(0 0 28px rgba(56,228,242,.25));
   animation:helium-bubble 3.8s ease-in-out infinite;
   user-select:none;
   pointer-events:none;
+}
+.theme-day .spin-letter-image{
+  mix-blend-mode:normal;
+  filter:brightness(.92) saturate(1.05) drop-shadow(0 0 5px rgba(31,167,201,.6)) drop-shadow(0 0 12px rgba(47,111,237,.3));
 }
 @keyframes helium-bubble{
   0%,100%{ transform:translateY(0) scale(1); }

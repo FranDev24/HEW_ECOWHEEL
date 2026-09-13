@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- HEW monogram: H + ondas de sonido. Sin anillo exterior (el anillo animado lo da #ring-jagged). Trazos claros para mix-blend screen + glow CSS -->
+  <g stroke="#D8F7FF" stroke-width="7">
+    <!-- H central redondeada -->
+    <path d="M70 62 v30 c0 9 6 13 15 13 h30 c9 0 15 -4 15 -13 V62"/>
+    <path d="M70 138 v-30 c0 -9 6 -13 15 -13 h30 c9 0 15 4 15 13 v30"/>
+    <!-- ondas izquierdas -->
+    <path d="M70 80 C54 88 47 94 47 100 C47 106 54 112 70 120" stroke-width="5.5"/>
+    <path d="M70 70 C48 80 40 89 40 100 C40 111 48 120 70 130" stroke-width="5.5"/>
+    <!-- ondas derechas -->
+    <path d="M130 80 C146 88 153 94 153 100 C153 106 146 112 130 120" stroke-width="5.5"/>
+    <path d="M130 70 C152 80 160 89 160 100 C160 111 152 120 130 130" stroke-width="5.5"/>
+  </g>
+</svg>
