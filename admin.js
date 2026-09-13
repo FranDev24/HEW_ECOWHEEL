@@ -32,10 +32,6 @@
   const bulkImportBtn = document.getElementById("bulk-import-btn");
   const bulkStatus = document.getElementById("bulk-status");
 
-  const previewQuestion = document.getElementById("preview-question");
-  const previewLearn = document.getElementById("preview-learn");
-  const previewLearnInfo = document.getElementById("preview-learn-info");
-
   const listItemsEl = document.getElementById("list-items");
   const listCountEl = document.getElementById("list-count");
   const listFooterEl = document.getElementById("list-footer");
@@ -95,7 +91,6 @@
       } catch (e) { /* ignorar archivo fallido */ }
     }
     renderThumbs();
-    updatePreview();
   }
 
   function renderThumbs() {
@@ -109,7 +104,6 @@
       item.querySelector(".thumb-remove").addEventListener("click", () => {
         currentImages.splice(i, 1);
         renderThumbs();
-        updatePreview();
       });
       thumbStrip.appendChild(item);
     });
@@ -131,15 +125,7 @@
     if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
   });
 
-  /* ---------------- vista previa en vivo ---------------- */
-  function updatePreview() {
-    const q = questionInput.value.trim();
-    previewQuestion.textContent = q || "¿Qué es un spin?";
-
-    previewLearn.hidden = false;
-    previewLearnInfo.hidden = true;
-  }
-
+  /* ---------------- carga masiva: numeración intacta ---------------- */
   function parseBulkQuestions(text) {
     const questions = new Map();
     text.split(/\r?\n/).forEach((line) => {
@@ -201,7 +187,6 @@
     currentImages = [await fileToDataURL(firstFile)];
     questionInput.value = questions.get(pairs[0]);
     renderThumbs();
-    updatePreview();
   }
 
   /* ---------------- carga masiva: dropzone + memoria acumulativa ---------------- */
@@ -288,14 +273,6 @@
     }
   });
 
-  previewLearn.addEventListener("click", () => {
-    const info = infoInput.value.trim();
-    previewLearnInfo.textContent = info || "Aún no agregaste una respuesta / info adicional.";
-    previewLearnInfo.hidden = !previewLearnInfo.hidden;
-  });
-
-  [questionInput, infoInput].forEach((el) => el.addEventListener("input", updatePreview));
-
   /* ---------------- lista de contenido ---------------- */
   function renderList() {
     const rounds = loadRounds();
@@ -347,7 +324,6 @@
     infoInput.value = round.info || "";
     currentImages = [...(round.images || [])];
     renderThumbs();
-    updatePreview();
     saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Actualizar en EcoWheel`;
     cancelEditBtn.hidden = false;
     questionInput.focus();
@@ -359,7 +335,6 @@
     form.reset();
     currentImages = [];
     renderThumbs();
-    updatePreview();
     saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Guardar en EcoWheel`;
     cancelEditBtn.hidden = true;
   }
@@ -403,13 +378,11 @@
   });
 
   /* ---------------- init ---------------- */
-  updatePreview();
   renderList();
 
   window.addEventListener("storage", (event) => {
     if (event.key === STORAGE_KEY) {
       renderList();
-      updatePreview();
     }
   });
 })();
