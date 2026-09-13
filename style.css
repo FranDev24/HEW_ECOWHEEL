@@ -103,11 +103,7 @@ textarea{
   height:100%;
   opacity:.55;
   pointer-events:none;
-  mix-blend-mode: screen;
   display:block;
-  transform:translateZ(0);
-  -webkit-mask-image:radial-gradient(ellipse at center, #000 42%, rgba(0,0,0,.72) 72%, transparent 100%);
-  mask-image:radial-gradient(ellipse at center, #000 42%, rgba(0,0,0,.72) 72%, transparent 100%);
 }
 .theme-day #fog-canvas{ mix-blend-mode: multiply; opacity:.28; }
 
@@ -210,24 +206,11 @@ textarea{
   height:160%;
   pointer-events:none;
   display:block;
-  transform:translateZ(0);
-  mix-blend-mode:screen;
-  -webkit-mask-image:radial-gradient(ellipse at center, #000 34%, rgba(0,0,0,.86) 66%, transparent 100%);
-  mask-image:radial-gradient(ellipse at center, #000 34%, rgba(0,0,0,.86) 66%, transparent 100%);
 }
 
 .ring-outer{
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  background-image: radial-gradient(circle, var(--text-1) 1.4px, transparent 1.6px);
-  background-size: 8.4% 8.4%;
-  -webkit-mask: radial-gradient(circle, transparent 45.5%, #000 46.5%, #000 52%, transparent 53%);
-  mask: radial-gradient(circle, transparent 45.5%, #000 46.5%, #000 52%, transparent 53%);
-  animation: rot-slow 40s linear infinite;
-  opacity:.8;
+  display:none;
 }
-@keyframes rot-slow{ to{ transform: rotate(360deg); } }
 
 .spin-btn{
   position:relative;
