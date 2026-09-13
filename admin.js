@@ -25,7 +25,10 @@
   const saveBtn = document.getElementById("save-btn");
   const cancelEditBtn = document.getElementById("cancel-edit-btn");
   const bulkQuestionsInput = document.getElementById("bulk-questions");
+  const bulkDropzone = document.getElementById("bulk-dropzone");
   const bulkFileInput = document.getElementById("bulk-file-input");
+  const bulkFileCount = document.getElementById("bulk-file-count");
+  const bulkThumbStrip = document.getElementById("bulk-thumb-strip");
   const bulkImportBtn = document.getElementById("bulk-import-btn");
   const bulkStatus = document.getElementById("bulk-status");
 
@@ -201,7 +204,89 @@
     updatePreview();
   }
 
-  bulkImportBtn.addEventListener("click", importBulk);
+  /* ---------------- carga masiva: dropzone + memoria acumulativa ---------------- */
+  // NOTA: no tocamos parseBulkQuestions / getImageNumber / importBulk.
+  // Solo añadimos una capa de UX (dropzone + buffer) que alimenta a bulkFileInput.files.
+  let bulkFiles = []; // buffer acumulativo: clic + varios drops se suman hasta 250
+
+  function refreshBulkUI() {
+    const count = bulkFiles.length;
+    bulkFileCount.hidden = count === 0;
+    if (count > 0) {
+      bulkFileCount.textContent = `✓ ${count} imagen${count === 1 ? "" : "es"} lista${count === 1 ? "" : "s"} para emparejar`;
+    }
+    bulkThumbStrip.innerHTML = "";
+    bulkThumbStrip.hidden = count === 0;
+    // Vista previa liviana: solo las primeras 24 para no saturar el DOM con 250 imgs
+    bulkFiles.slice(0, 24).forEach((file, i) => {
+      const url = URL.createObjectURL(file);
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = file.name || `Imagen ${i + 1}`;
+      img.decoding = "async";
+      // Alta resolución: el navegador conserva el bitmap original; contain evita recorte
+      img.onload = () => URL.revokeObjectURL(url);
+      bulkThumbStrip.appendChild(img);
+    });
+    if (count > 24) {
+      const more = document.createElement("p");
+      more.className = "bulk-file-count";
+      more.textContent = `… y ${count - 24} más`;
+      bulkThumbStrip.appendChild(more);
+    }
+  }
+
+  function addBulkFiles(fileList) {
+    const incoming = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
+    if (!incoming.length) return;
+    // Acumula sin duplicar por (nombre + tamaño) y respeta el tope de 250
+    const seen = new Set(bulkFiles.map((f) => `${f.name}::${f.size}`));
+    for (const file of incoming) {
+      const key = `${file.name}::${file.size}`;
+      if (seen.has(key)) continue;
+      if (bulkFiles.length >= MAX_BULK_ROUNDS) break;
+      seen.add(key);
+      bulkFiles.push(file);
+    }
+    // Sincroniza el <input> real para que importBulk() siga leyendo bulkFileInput.files sin cambios
+    const dt = new DataTransfer();
+    bulkFiles.forEach((f) => dt.items.add(f));
+    bulkFileInput.files = dt.files;
+    refreshBulkUI();
+  }
+
+  bulkDropzone.addEventListener("click", () => bulkFileInput.click());
+  bulkDropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); bulkFileInput.click(); }
+  });
+  bulkFileInput.addEventListener("change", (e) => {
+    addBulkFiles(e.target.files);
+    bulkFileInput.value = ""; // permite re-elegir el mismo archivo si se desea
+    const dt = new DataTransfer();
+    bulkFiles.forEach((f) => dt.items.add(f));
+    bulkFileInput.files = dt.files;
+  });
+
+  ["dragenter", "dragover"].forEach((evt) =>
+    bulkDropzone.addEventListener(evt, (e) => { e.preventDefault(); bulkDropzone.classList.add("dragover"); })
+  );
+  ["dragleave", "drop"].forEach((evt) =>
+    bulkDropzone.addEventListener(evt, (e) => { e.preventDefault(); bulkDropzone.classList.remove("dragover"); })
+  );
+  bulkDropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer?.files?.length) addBulkFiles(e.dataTransfer.files);
+  });
+
+  bulkImportBtn.addEventListener("click", async () => {
+    await importBulk();
+    // Limpia el buffer solo si el lote se cargó con éxito (el status empieza con ✓)
+    if (bulkStatus.textContent.startsWith("✓")) {
+      bulkFiles = [];
+      const dt = new DataTransfer();
+      bulkFileInput.files = dt.files;
+      refreshBulkUI();
+    }
+  });
 
   previewLearn.addEventListener("click", () => {
     const info = infoInput.value.trim();

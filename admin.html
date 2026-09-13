@@ -7,7 +7,7 @@
 <meta name="description" content="Sube las imágenes y preguntas que aparecerán en el wheel de Ecowheel." />
 <meta name="theme-color" content="#040405" />
 <link rel="stylesheet" href="style.css?v=20260913-16" />
-<link rel="stylesheet" href="admin.css?v=20260913-4" />
+<link rel="stylesheet" href="admin.css?v=20260913-5" />
 </head>
 <body class="theme-night admin-body">
 
@@ -68,8 +68,17 @@
           <p class="bulk-help">Pega preguntas como <strong>1. Pregunta</strong>, <strong>2. Pregunta</strong> y selecciona imágenes con el mismo número en el nombre: <strong>1.jpg</strong>, <strong>2.png</strong>.</p>
           <label class="field-label" for="bulk-questions">Preguntas numeradas</label>
           <textarea id="bulk-questions" class="field-input field-textarea bulk-questions" rows="7" placeholder="1. Primera pregunta\n2. Segunda pregunta\n3. Tercera pregunta"></textarea>
-          <label class="field-label" for="bulk-file-input">Imágenes numeradas (máximo 250)</label>
-          <input id="bulk-file-input" class="field-input bulk-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+          <label class="field-label" for="bulk-dropzone">Imágenes numeradas (máximo 250)</label>
+          <div id="bulk-dropzone" class="dropzone bulk-dropzone" tabindex="0" role="button" aria-label="Subir imágenes numeradas: clic o arrastrar y soltar">
+            <input id="bulk-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            <div class="dropzone-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3l5 5h-3v6h-4V8H7l5-5Zm-7 14h14v2H5v-2Z"/></svg>
+            </div>
+            <p class="dropzone-title">Arrastra tus imágenes numeradas aquí o explora archivos</p>
+            <p class="dropzone-hint">Nómbralas igual que la pregunta: <strong>1.jpg</strong>, <strong>2.png</strong> … Máx 250</p>
+            <p id="bulk-file-count" class="bulk-file-count" aria-live="polite" hidden></p>
+          </div>
+          <div id="bulk-thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
           <button type="button" id="bulk-import-btn" class="save-btn bulk-import-btn">Cargar lote en EcoWheel</button>
           <p id="bulk-status" class="bulk-status" role="status" aria-live="polite"></p>
         </section>
@@ -122,6 +131,6 @@
     </div>
   </main>
 
-  <script src="admin.js?v=20260913-6"></script>
+  <script src="admin.js?v=20260913-7"></script>
 </body>
 </html>

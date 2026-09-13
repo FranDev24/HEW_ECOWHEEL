@@ -356,12 +356,13 @@ textarea{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:1px;
+  padding:clamp(8px, 2vmin, 20px);
   border:1px solid transparent;
   background:
     linear-gradient(var(--bg-0), var(--bg-0)) padding-box,
     linear-gradient(125deg, var(--helio-a), var(--helio-c), var(--helio-b), var(--helio-a)) border-box;
   background-size:100% 100%, 260% 260%;
+  background-position:center, 0% 50%;
   box-shadow:0 0 18px rgba(56,228,242,.2), inset 0 0 18px rgba(56,228,242,.08);
   backdrop-filter:none;
   -webkit-backdrop-filter:none;
@@ -373,6 +374,11 @@ textarea{
   width:auto;
   height:auto;
   object-fit:contain;
+  object-position:center;
+  background-position:center;
+  background-size:contain;
+  background-repeat:no-repeat;
+  image-rendering:high-quality;
   display:block;
 }
 
