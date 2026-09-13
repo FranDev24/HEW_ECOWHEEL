@@ -36,6 +36,7 @@
   themeBtn.addEventListener("click", () => {
     currentTheme = currentTheme === "night" ? "day" : "night";
     applyTheme(currentTheme);
+    helioColors = null;
   });
 
   /* ---------------------------------------------------------
@@ -65,7 +66,7 @@
   const RING_POINTS = 22;
   const RING_R = 72;
   const RING_CENTER = 100;
-  let ringNoiseOffsets = Array.from({ length: RING_POINTS }, () => Math.random() * 1000);
+  const ringNoiseOffsets = Array.from({ length: RING_POINTS }, () => Math.random() * 1000);
   let ringAmplitude = 5.5; // idle wobble
   let ringSpeed = 0.35;
 
@@ -123,7 +124,6 @@
       this.wob = Math.random() * Math.PI * 2;
       this.life = 1;
       this.burstVX = 0;
-      this.burstVY = 0;
     }
   }
 
@@ -140,26 +140,31 @@
     pointer.y = p.clientY - rect.top;
   }
 
-  ["mousemove", "touchmove"].forEach((evt) => {
-    spinBtn.addEventListener(evt, (e) => {
-      setPointerFromEvent(e);
-      pointer.active = true;
-    }, { passive: true });
-  });
-  ["mouseenter", "touchstart"].forEach((evt) => {
-    spinBtn.addEventListener(evt, (e) => { setPointerFromEvent(e); pointer.active = true; }, { passive: true });
-  });
-  ["mouseleave", "touchend", "touchcancel"].forEach((evt) => {
-    spinBtn.addEventListener(evt, () => { pointer.active = false; }, { passive: true });
+  spinBtn.addEventListener("pointermove", (e) => {
+    setPointerFromEvent(e);
+    pointer.active = true;
+  }, { passive: true });
+  spinBtn.addEventListener("pointerenter", (e) => {
+    setPointerFromEvent(e);
+    pointer.active = true;
+  }, { passive: true });
+  ["pointerleave", "pointerup", "pointercancel"].forEach((eventName) => {
+    spinBtn.addEventListener(eventName, () => { pointer.active = false; }, { passive: true });
   });
 
-  function themeHelioColors() {
+  let helioColors = null;
+
+  function readHelioColors() {
     const styles = getComputedStyle(body);
     return {
       a: styles.getPropertyValue("--helio-a").trim() || "#38e4f2",
       b: styles.getPropertyValue("--helio-b").trim() || "#7cf4ff",
       c: styles.getPropertyValue("--helio-c").trim() || "#1c6bd8",
     };
+  }
+
+  function themeHelioColors() {
+    return helioColors || (helioColors = readHelioColors());
   }
 
   /* ---------------------------------------------------------
@@ -169,7 +174,7 @@
   let modeStart = 0;
   let globalT = 0;
 
-  function updateParticles(dt, t) {
+  function updateParticles(dt) {
     const colors = themeHelioColors();
     ctx.clearRect(0, 0, cw, ch);
     ctx.globalCompositeOperation = "lighter";
@@ -230,8 +235,12 @@
   const fogCanvas = document.getElementById("fog-canvas");
   const fctx = fogCanvas.getContext("2d");
   let fogBlobs = [];
+  let fogWidth = 0;
+  let fogHeight = 0;
   function initFog() {
     const rect = fogCanvas.getBoundingClientRect();
+    fogWidth = rect.width;
+    fogHeight = rect.height;
     fogCanvas.width = rect.width * dpr;
     fogCanvas.height = rect.height * dpr;
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -244,15 +253,14 @@
     }));
   }
   function drawFog(dt) {
-    const rect = fogCanvas.getBoundingClientRect();
-    fctx.clearRect(0, 0, rect.width, rect.height);
+    fctx.clearRect(0, 0, fogWidth, fogHeight);
     const colors = themeHelioColors();
     for (const b of fogBlobs) {
       b.x += b.vx * dt; b.y += b.vy * dt;
-      if (b.x < -b.r) b.x = rect.width + b.r;
-      if (b.x > rect.width + b.r) b.x = -b.r;
-      if (b.y < -b.r) b.y = rect.height + b.r;
-      if (b.y > rect.height + b.r) b.y = -b.r;
+      if (b.x < -b.r) b.x = fogWidth + b.r;
+      if (b.x > fogWidth + b.r) b.x = -b.r;
+      if (b.y < -b.r) b.y = fogHeight + b.r;
+      if (b.y > fogHeight + b.r) b.y = -b.r;
       const g = fctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
       g.addColorStop(0, colors.c + "22");
       g.addColorStop(1, "transparent");
@@ -281,7 +289,7 @@
     }
 
     drawRing(globalT * 40);
-    updateParticles(dt, globalT);
+    updateParticles(dt);
     drawFog(dt);
 
     requestAnimationFrame(loop);

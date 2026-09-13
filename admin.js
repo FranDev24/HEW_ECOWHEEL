@@ -117,7 +117,6 @@
       previewPlaceholder.hidden = false;
     }
 
-    const info = infoInput.value.trim();
     previewLearn.hidden = false;
     previewLearnInfo.hidden = true;
   }
