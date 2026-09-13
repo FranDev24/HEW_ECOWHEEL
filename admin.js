@@ -12,6 +12,9 @@
 
   const STORAGE_KEY = "ecowheel-rounds";
   const MAX_IMAGES = 8;
+  const MAX_BULK_ROUNDS = 250;
+  const IMAGE_DB_NAME = "ecowheel-images";
+  const IMAGE_STORE_NAME = "images";
 
   const questionInput = document.getElementById("question-input");
   const infoInput = document.getElementById("info-input");
@@ -21,6 +24,10 @@
   const form = document.getElementById("round-form");
   const saveBtn = document.getElementById("save-btn");
   const cancelEditBtn = document.getElementById("cancel-edit-btn");
+  const bulkQuestionsInput = document.getElementById("bulk-questions");
+  const bulkFileInput = document.getElementById("bulk-file-input");
+  const bulkImportBtn = document.getElementById("bulk-import-btn");
+  const bulkStatus = document.getElementById("bulk-status");
 
   const previewThumb = document.getElementById("preview-thumb");
   const previewPlaceholder = document.getElementById("preview-placeholder");
@@ -45,6 +52,26 @@
   }
   function saveRounds(rounds) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rounds));
+  }
+
+  function openImageDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(IMAGE_DB_NAME, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(IMAGE_STORE_NAME);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function storeImage(id, file) {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(IMAGE_STORE_NAME, "readwrite");
+      transaction.objectStore(IMAGE_STORE_NAME).put(file, id);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
   }
 
   /* ---------------- subida de imágenes ---------------- */
@@ -121,6 +148,72 @@
     previewLearnInfo.hidden = true;
   }
 
+  function parseBulkQuestions(text) {
+    const questions = new Map();
+    text.split(/\r?\n/).forEach((line) => {
+      const match = line.match(/^\s*(\d+)\s*[.)\-:]\s*(.+?)\s*$/);
+      if (match && match[2]) questions.set(Number(match[1]), match[2]);
+    });
+    return questions;
+  }
+
+  function getImageNumber(file) {
+    const match = file.name.match(/^(\d+)/);
+    return match ? Number(match[1]) : null;
+  }
+
+  async function importBulk() {
+    const questions = parseBulkQuestions(bulkQuestionsInput.value);
+    const files = Array.from(bulkFileInput.files || []).filter((file) => file.type.startsWith("image/"));
+    if (!questions.size || !files.length) {
+      bulkStatus.textContent = "Agrega preguntas numeradas e imágenes numeradas para continuar.";
+      return;
+    }
+
+    const images = new Map();
+    files.slice(0, MAX_BULK_ROUNDS).forEach((file) => {
+      const number = getImageNumber(file);
+      if (number && !images.has(number)) images.set(number, file);
+    });
+    const pairs = [...questions.keys()]
+      .filter((number) => images.has(number))
+      .sort((a, b) => a - b)
+      .slice(0, MAX_BULK_ROUNDS);
+    if (!pairs.length) {
+      bulkStatus.textContent = "No hay coincidencias: revisa que el número del archivo y la pregunta sea igual.";
+      return;
+    }
+
+    bulkImportBtn.disabled = true;
+    bulkStatus.textContent = `Preparando ${pairs.length} pares numerados…`;
+    const rounds = loadRounds();
+    for (const number of pairs) {
+      const file = images.get(number);
+      const imageId = `img-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
+      await storeImage(imageId, file);
+      rounds.push({
+        id: `r${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 6)}`,
+        question: questions.get(number),
+        info: "",
+        imageId,
+        imageName: file.name,
+        action: "1. Panel de Usuario",
+        createdAt: Date.now(),
+      });
+    }
+    saveRounds(rounds);
+    bulkStatus.textContent = `✓ ${pairs.length} pares cargados. Los números mantienen cada imagen junto a su pregunta.`;
+    bulkImportBtn.disabled = false;
+    renderList();
+    const firstFile = images.get(pairs[0]);
+    currentImages = [await fileToDataURL(firstFile)];
+    questionInput.value = questions.get(pairs[0]);
+    renderThumbs();
+    updatePreview();
+  }
+
+  bulkImportBtn.addEventListener("click", importBulk);
+
   previewLearn.addEventListener("click", () => {
     const info = infoInput.value.trim();
     previewLearnInfo.textContent = info || "Aún no agregaste una respuesta / info adicional.";
@@ -151,7 +244,7 @@
         </div>
         <div class="list-item-body">
           <div class="list-item-question">${escapeHtml(round.question)}</div>
-          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${round.images ? round.images.length : 0} img</div>
+          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${round.imageId ? "1 img" : `${round.images ? round.images.length : 0} img`}</div>
         </div>
         <div class="list-item-actions">
           <button type="button" data-action="edit" aria-label="Editar" title="Editar">
@@ -238,4 +331,11 @@
   /* ---------------- init ---------------- */
   updatePreview();
   renderList();
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === STORAGE_KEY) {
+      renderList();
+      updatePreview();
+    }
+  });
 })();

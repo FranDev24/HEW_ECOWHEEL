@@ -213,6 +213,18 @@
 
 .admin-side{ display:flex; flex-direction:column; gap:20px; }
 
+.bulk-import{
+  margin-top:24px;
+  padding-top:22px;
+  border-top:1px solid var(--border);
+}
+.bulk-title{ margin:0 0 8px; font-size:16px; }
+.bulk-help{ margin:0 0 16px; color:var(--text-1); font-size:12.5px; line-height:1.5; }
+.bulk-questions{ min-height:140px; }
+.bulk-file-input{ padding:10px; font-size:12px; }
+.bulk-import-btn{ margin-top:16px; }
+.bulk-status{ min-height:18px; margin:12px 0 0; color:var(--text-1); font-size:12.5px; }
+
 .preview-card{ padding:0; overflow:hidden; }
 .preview-head{
   display:flex; align-items:center; justify-content:space-between;
@@ -256,7 +268,7 @@
   overflow:hidden;
   position:relative;
 }
-.preview-thumb{ width:100%; height:100%; object-fit:cover; }
+.preview-thumb{ width:100%; height:100%; object-fit:contain; }
 .preview-placeholder{
   font-size:44px; font-weight:700;
   color: var(--text-0);

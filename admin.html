@@ -59,6 +59,17 @@
           </button>
           <button type="button" id="cancel-edit-btn" class="cancel-edit-btn" hidden>Cancelar edición</button>
         </form>
+
+        <section class="bulk-import" aria-labelledby="bulk-title">
+          <h2 id="bulk-title" class="bulk-title">Carga masiva numerada</h2>
+          <p class="bulk-help">Pega preguntas como <strong>1. Pregunta</strong>, <strong>2. Pregunta</strong> y selecciona imágenes con el mismo número en el nombre: <strong>1.jpg</strong>, <strong>2.png</strong>.</p>
+          <label class="field-label" for="bulk-questions">Preguntas numeradas</label>
+          <textarea id="bulk-questions" class="field-input field-textarea bulk-questions" rows="7" placeholder="1. Primera pregunta\n2. Segunda pregunta\n3. Tercera pregunta"></textarea>
+          <label class="field-label" for="bulk-file-input">Imágenes numeradas (máximo 250)</label>
+          <input id="bulk-file-input" class="field-input bulk-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+          <button type="button" id="bulk-import-btn" class="save-btn bulk-import-btn">Cargar lote en EcoWheel</button>
+          <p id="bulk-status" class="bulk-status" role="status" aria-live="polite"></p>
+        </section>
       </section>
 
       <!-- Columna derecha: preview + lista -->
@@ -108,6 +119,6 @@
     </div>
   </main>
 
-  <script src="admin.js?v=20260913-5"></script>
+  <script src="admin.js?v=20260913-6"></script>
 </body>
 </html>

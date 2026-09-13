@@ -343,7 +343,35 @@
     spinning = false;
   }
 
-  function pickRound() {
+  const IMAGE_DB_NAME = "ecowheel-images";
+  const IMAGE_STORE_NAME = "images";
+
+  function openImageDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(IMAGE_DB_NAME, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(IMAGE_STORE_NAME);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function resolveImage(imageId) {
+    if (!imageId) return "";
+    try {
+      const db = await openImageDb();
+      const blob = await new Promise((resolve, reject) => {
+        const request = db.transaction(IMAGE_STORE_NAME).objectStore(IMAGE_STORE_NAME).get(imageId);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      db.close();
+      return blob ? URL.createObjectURL(blob) : "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function pickRound() {
     const stored = loadStoredRounds();
     const rounds = uniqueRounds(stored.length
       ? stored
@@ -371,6 +399,7 @@
 
     const round = roundPool.pop();
     lastQuestionKey = round.question.trim().toLocaleLowerCase();
+    if (round.imageId) round.image = await resolveImage(round.imageId);
     return round;
   }
 
@@ -400,6 +429,7 @@
       // espera el wheel (image único) sin perder el arreglo original.
       return raw.map((r) => ({
         image: (r.images && r.images[0]) || r.image || "",
+        imageId: r.imageId || "",
         question: r.question || "",
         info: r.info || "",
         action: r.action || "1. Panel de Usuario",
@@ -430,12 +460,15 @@
       });
     }, CHARGE_MS);
 
-    setTimeout(() => {
-      const round = pickRound();
+    setTimeout(async () => {
+      const round = await pickRound();
       if (round) {
         resultImage.src = round.image;
         resultImage.alt = round.question;
         questionText.textContent = round.question;
+        resultImage.onload = () => {
+          if (round.image.startsWith("blob:")) URL.revokeObjectURL(round.image);
+        };
         if (round.info) {
           learnMoreBtn.hidden = false;
           learnMoreInfo.hidden = true;
