@@ -261,11 +261,14 @@ textarea{
 .spin-letter-image{
   position:relative;
   z-index:2;
-  width:42%;
-  height:72%;
+  width:24%;
+  height:38%;
   object-fit:contain;
+  object-position:center;
+  border-radius:10%;
+  mix-blend-mode:screen;
   overflow:visible;
-  filter:drop-shadow(0 0 8px rgba(56,228,242,.7)) drop-shadow(0 0 18px rgba(124,244,255,.35));
+  filter:drop-shadow(0 0 6px rgba(56,228,242,.55)) drop-shadow(0 0 14px rgba(124,244,255,.24));
   animation:helium-bubble 3.8s ease-in-out infinite;
   user-select:none;
   pointer-events:none;
