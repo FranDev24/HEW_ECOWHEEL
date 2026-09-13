@@ -427,6 +427,19 @@
     overflow-wrap:anywhere;
     word-break:break-word;
   }
+
+  html.admin-document,
+  html.admin-document body{
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+
+  html.admin-document::-webkit-scrollbar,
+  html.admin-document body::-webkit-scrollbar{
+    display:none;
+    width:0;
+    height:0;
+  }
 }
 .list-item-meta{
   display:flex; align-items:center; gap:6px;
