@@ -332,6 +332,7 @@
     spinBtn.setAttribute("aria-busy", "false");
     mode = "idle";
     hintText.style.opacity = "1";
+    hintText.classList.remove("is-loading");
     hintText.textContent = "Toca el núcleo para iniciar el giro";
     spinning = false;
   }
@@ -409,7 +410,8 @@
     spinBtn.setAttribute("aria-busy", "true");
     mode = "charging";
     modeStart = performance.now();
-    hintText.textContent = "Enfriando el resonador…";
+    hintText.classList.add("is-loading");
+    hintText.textContent = "Preparando el núcleo";
 
     const CHARGE_MS = 1500;
     const BURST_MS = 900;

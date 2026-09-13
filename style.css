@@ -288,6 +288,40 @@ textarea{
   transition: opacity var(--dur-fast);
 }
 
+.hint.is-loading{
+  position:relative;
+  color:var(--text-0);
+  animation:thinking-pulse 1.35s ease-in-out infinite;
+}
+.hint.is-loading::after{
+  content:"";
+  display:inline-block;
+  width:1.2em;
+  text-align:left;
+  animation:thinking-dots 1.35s steps(4, end) infinite;
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .hint.is-loading{
+    background:linear-gradient(105deg, var(--text-1) 20%, var(--helio-b) 45%, #fff 50%, var(--helio-a) 60%, var(--text-1) 80%);
+    background-size:240% auto;
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:thinking-shimmer 1.35s linear infinite;
+  }
+}
+@keyframes thinking-pulse{
+  0%,100%{ opacity:.58; }
+  50%{ opacity:1; }
+}
+@keyframes thinking-shimmer{ to{ background-position:-240% center; } }
+@keyframes thinking-dots{
+  0%{ content:""; }
+  25%{ content:"."; }
+  50%{ content:".."; }
+  75%,100%{ content:"..."; }
+}
+
 /* ---------- Result screen ---------- */
 .screen-result{
   justify-content:flex-start;
