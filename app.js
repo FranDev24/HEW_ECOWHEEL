@@ -52,8 +52,7 @@
       screenSpin.hidden = false;
       resetSpinButton();
     } else {
-      // Aquí engancharías la navegación real a tu panel de usuario.
-      window.history.length > 1 ? window.history.back() : null;
+      window.location.href = "admin.html";
     }
   });
 
