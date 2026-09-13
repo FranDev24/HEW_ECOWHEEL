@@ -106,6 +106,7 @@
     canvas.width = Math.max(1, Math.ceil(cw * dpr));
     canvas.height = Math.max(1, Math.ceil(ch * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
     cx = cw / 2; cy = ch / 2;
   }
 
@@ -123,6 +124,7 @@
       this.size = 0.8 + Math.random() * 2.1;
       this.hueMix = Math.random();
       this.wob = Math.random() * Math.PI * 2;
+      this.twinkle = 0.8 + Math.random() * 2.4;
       this.life = 1;
       this.burstVX = 0;
     }
@@ -215,10 +217,17 @@
       const col = p.hueMix > 0.66 ? colors.b : p.hueMix > 0.33 ? colors.a : colors.c;
       glow.addColorStop(0, col);
       glow.addColorStop(1, "transparent");
-      ctx.globalAlpha = 0.55 * p.life;
+      const shimmer = 0.72 + Math.sin(globalT * p.twinkle + p.wob) * 0.2;
+      ctx.globalAlpha = 0.42 * p.life * shimmer;
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(px, py, p.size * (mode === "charging" ? 1.6 : 1), 0, Math.PI * 2);
+      ctx.arc(px, py, p.size * (mode === "charging" ? 1.7 : 1), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 0.7 * p.life * shimmer;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(.55, p.size * .38), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -246,6 +255,7 @@
     fogCanvas.width = Math.max(1, Math.ceil(rect.width * dpr));
     fogCanvas.height = Math.max(1, Math.ceil(rect.height * dpr));
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.imageSmoothingEnabled = true;
     fogBlobs = Array.from({ length: 6 }, () => ({
       x: Math.random() * rect.width,
       y: Math.random() * rect.height,
