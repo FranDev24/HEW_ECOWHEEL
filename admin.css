@@ -11,6 +11,7 @@
   overflow-x:hidden;
   height:auto;
   min-height:100dvh;
+  -webkit-text-size-adjust:100%;
 }
 
 .admin-document,
@@ -130,13 +131,20 @@
   font-family:inherit;
   outline:none;
   transition: border-color .2s, background .2s;
+  overflow-wrap:anywhere;
 }
 .field-input::placeholder{ color: var(--text-1); }
 .field-input:focus{
   border-color: var(--helio-a);
   background: rgba(56,228,242,.06);
 }
-.field-textarea{ resize:vertical; min-height:80px; }
+.field-textarea{
+  resize:vertical;
+  min-height:80px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
 
 .dropzone{
   width:100%;
@@ -403,6 +411,21 @@
   .save-btn{
     min-width:0;
     white-space:normal;
+  }
+
+  .field-input,
+  .bulk-file-input{
+    font-size:16px;
+    line-height:1.35;
+  }
+
+  .field-label,
+  .dropzone-title,
+  .dropzone-hint,
+  .bulk-help,
+  .bulk-status{
+    overflow-wrap:anywhere;
+    word-break:break-word;
   }
 }
 .list-item-meta{
