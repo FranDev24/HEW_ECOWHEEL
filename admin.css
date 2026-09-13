@@ -32,35 +32,27 @@
 .admin-header{ margin-bottom:28px; max-width:640px; }
 
 .admin-back{
-  display:inline-block;
+  width:40px;
+  height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   color: var(--text-1);
   text-decoration:none;
-  font-size:13px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--surface);
+  transition:color .2s, border-color .2s, transform .2s var(--ease-liquid);
   margin-bottom:18px;
 }
-.admin-back:hover{ color: var(--text-0); }
-
-.admin-eyebrow{
-  color: var(--helio-a);
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  margin:0 0 10px;
-}
+.admin-back:hover{ color:var(--text-0); border-color:var(--helio-a); }
+.admin-back:active{ transform:scale(.92); }
 .admin-title{
   font-size: clamp(26px, 3.6vw, 34px);
   font-weight:800;
   letter-spacing:-.01em;
   margin:0 0 10px;
 }
-.admin-subtitle{
-  color: var(--text-1);
-  font-size:15px;
-  line-height:1.5;
-  margin:0;
-}
-
 .admin-grid{
   display:grid;
   grid-template-columns: 1.05fr 1fr;
@@ -83,10 +75,6 @@
 
   .admin-title{
     font-size:28px;
-  }
-
-  .admin-subtitle{
-    font-size:14px;
   }
 
   .preview-meta{
