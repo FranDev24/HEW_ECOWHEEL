@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050506"/>
+      <stop offset="100%" stop-color="#0a1a33"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#bg2)"/>
+  <g fill="none" stroke="#4dc4ff" stroke-width="2" opacity="0.8">
+    <path d="M60 250 Q200 120 340 250" />
+    <path d="M60 250 Q200 380 340 250" />
+  </g>
+  <circle cx="200" cy="250" r="10" fill="#9df6ff"/>
+  <g fill="#eafcff" font-family="sans-serif">
+    <text x="200" y="420" text-anchor="middle" font-size="20" font-weight="700">CAMPO MAGNÉTICO</text>
+    <text x="200" y="448" text-anchor="middle" font-size="13" fill="#9fd7de">Modelo ilustrativo — Ecowheel</text>
+  </g>
+</svg>

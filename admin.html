@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Configura tu EcoWheel — Panel de administración</title>
+<meta name="description" content="Sube las imágenes y preguntas que aparecerán en el wheel de Ecowheel." />
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body class="theme-night admin-body">
+
+  <div class="admin-topline"></div>
+
+  <main class="admin-wrap">
+
+    <header class="admin-header">
+      <a class="admin-back" href="index.html">← Volver al wheel</a>
+      <p class="admin-eyebrow">Módulo de entrada clínica</p>
+      <h1 class="admin-title">Configura tu EcoWheel</h1>
+      <p class="admin-subtitle">Sube las imágenes y preguntas que aparecerán en el wheel. Arrastra o edita.</p>
+    </header>
+
+    <div class="admin-grid">
+
+      <!-- Columna izquierda: formulario -->
+      <section class="admin-card">
+        <form id="round-form">
+          <label class="field-label" for="question-input">Pregunta que va a aparecer</label>
+          <input
+            id="question-input"
+            class="field-input"
+            type="text"
+            placeholder="Ej: ¿Qué es un spin?"
+            autocomplete="off"
+          />
+
+          <label class="field-label" for="dropzone">Imágenes del wheel</label>
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Subir imágenes">
+            <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            <div class="dropzone-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3l5 5h-3v6h-4V8H7l5-5Zm-7 14h14v2H5v-2Z"/></svg>
+            </div>
+            <p class="dropzone-title">Arrastra tu imagen aquí o explora archivos</p>
+            <p class="dropzone-hint">Soporta PNG, JPG, WEBP para helio líquido · Máx 8 archivos</p>
+          </div>
+          <div id="thumb-strip" class="thumb-strip" hidden></div>
+
+          <label class="field-label" for="info-input">Respuesta / info adicional <span class="field-optional">(opcional)</span></label>
+          <textarea
+            id="info-input"
+            class="field-input field-textarea"
+            placeholder="Explica qué verán al tocar 'Aprender más'…"
+            rows="3"
+          ></textarea>
+
+          <button type="submit" id="save-btn" class="save-btn">
+            <span aria-hidden="true">✨</span> Guardar en EcoWheel
+          </button>
+          <button type="button" id="cancel-edit-btn" class="cancel-edit-btn" hidden>Cancelar edición</button>
+        </form>
+      </section>
+
+      <!-- Columna derecha: preview + lista -->
+      <section class="admin-side">
+
+        <div class="admin-card preview-card">
+          <div class="preview-head">
+            <span class="preview-label">Vista previa en vivo</span>
+            <span class="preview-status"><span class="dot"></span> Reactivo</span>
+          </div>
+
+          <div class="preview-stage">
+            <div class="preview-brand pill-glass">
+              <span class="brand-dot"></span> ECOWHEEL
+            </div>
+
+            <div class="preview-ring">
+              <img id="preview-thumb" class="preview-thumb" alt="" hidden />
+              <span id="preview-placeholder" class="preview-placeholder">?</span>
+            </div>
+
+            <div class="preview-question pill-glass" id="preview-question">¿Qué es un spin?</div>
+
+            <button class="preview-learn pill-glass" id="preview-learn" type="button">
+              Aprender más
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <p class="preview-learn-info" id="preview-learn-info" hidden></p>
+          </div>
+
+          <div class="preview-meta">
+            <span>iPhone 18 Pro Black Titanium · Heliomorfismo</span>
+            <span>Liquid Glass</span>
+          </div>
+        </div>
+
+        <div class="list-card">
+          <div class="list-head">
+            <span class="list-title">Lista de contenido en el wheel</span>
+            <span class="list-count" id="list-count">0 items</span>
+          </div>
+          <div id="list-items" class="list-items"></div>
+          <p class="list-footer" id="list-footer">✓ 0 preguntas activas en el EcoWheel · Sincronización líquida</p>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>
