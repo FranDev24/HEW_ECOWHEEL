@@ -258,21 +258,26 @@ textarea{
   fill: rgba(31,167,201,.08);
 }
 
-.spin-letter{
+.spin-letter-image{
   position:relative;
   z-index:2;
-  font-size: clamp(38px, 9vw, 54px);
-  font-weight:800;
-  letter-spacing:0;
-  color: var(--helio-b);
-  text-shadow: 0 0 18px var(--helio-a), 0 0 40px rgba(56,228,242,.5);
-  font-family: "SF Pro Display", -apple-system, sans-serif;
+  width:42%;
+  height:72%;
+  object-fit:contain;
+  overflow:visible;
+  filter:drop-shadow(0 0 8px rgba(56,228,242,.7)) drop-shadow(0 0 18px rgba(124,244,255,.35));
+  animation:helium-bubble 3.8s ease-in-out infinite;
   user-select:none;
+  pointer-events:none;
+}
+@keyframes helium-bubble{
+  0%,100%{ transform:translateY(0) scale(1); }
+  50%{ transform:translateY(-2px) scale(1.018); }
 }
 
 .spin-btn.charging .ring-jagged{ filter: url(#helio-warp-strong) drop-shadow(0 0 7px var(--helio-a)) drop-shadow(0 0 20px var(--helio-b)); }
 .spin-btn.charging .ring-svg{ filter:none; }
-.spin-btn.charging .spin-letter{ animation: flicker .12s linear infinite; }
+.spin-btn.charging .spin-letter-image{ animation:flicker .12s linear infinite; }
 @keyframes flicker{ 0%,100%{ opacity:1;} 50%{ opacity:.55; filter:blur(.4px);} }
 
 .hint{
