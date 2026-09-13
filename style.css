@@ -209,8 +209,18 @@ textarea{
 }
 
 .ring-outer{
-  display:none;
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background-image:radial-gradient(circle, var(--text-1) 1.4px, transparent 1.6px);
+  background-size:8.4% 8.4%;
+  -webkit-mask:radial-gradient(circle, transparent 45.5%, #000 46.5%, #000 52%, transparent 53%);
+  mask:radial-gradient(circle, transparent 45.5%, #000 46.5%, #000 52%, transparent 53%);
+  clip-path:circle(50% at 50% 50%);
+  animation:rot-slow 40s linear infinite;
+  opacity:.8;
 }
+@keyframes rot-slow{ to{ transform:rotate(360deg); } }
 
 .spin-btn{
   position:relative;
