@@ -306,6 +306,9 @@
   const learnMoreInfo = document.getElementById("learn-more-info");
 
   let spinning = false;
+  let roundPool = [];
+  let roundPoolSignature = "";
+  let lastQuestionKey = "";
 
   function resetSpinButton() {
     spinBtn.classList.remove("charging");
@@ -317,11 +320,52 @@
 
   function pickRound() {
     const stored = loadStoredRounds();
-    const rounds = stored.length
+    const rounds = uniqueRounds(stored.length
       ? stored
-      : (typeof ECOWHEEL_ROUNDS !== "undefined" ? ECOWHEEL_ROUNDS : []);
+      : (typeof ECOWHEEL_ROUNDS !== "undefined" ? ECOWHEEL_ROUNDS : []));
     if (!rounds.length) return null;
-    return rounds[Math.floor(Math.random() * rounds.length)];
+
+    const signature = rounds.map((round) => round.question.trim().toLocaleLowerCase()).join("|");
+    if (signature !== roundPoolSignature || roundPool.length === 0) {
+      roundPool = shuffleRounds(rounds);
+      roundPoolSignature = signature;
+    }
+
+    if (roundPool.length > 1 && lastQuestionKey) {
+      const nextQuestionKey = roundPool[roundPool.length - 1].question.trim().toLocaleLowerCase();
+      if (nextQuestionKey === lastQuestionKey) {
+        const alternativeIndex = roundPool.findIndex((round) => (
+          round.question.trim().toLocaleLowerCase() !== lastQuestionKey
+        ));
+        [roundPool[roundPool.length - 1], roundPool[alternativeIndex]] = [
+          roundPool[alternativeIndex],
+          roundPool[roundPool.length - 1],
+        ];
+      }
+    }
+
+    const round = roundPool.pop();
+    lastQuestionKey = round.question.trim().toLocaleLowerCase();
+    return round;
+  }
+
+  function uniqueRounds(rounds) {
+    const seenQuestions = new Set();
+    return rounds.filter((round) => {
+      const questionKey = (round.question || "").trim().toLocaleLowerCase();
+      if (!questionKey || seenQuestions.has(questionKey)) return false;
+      seenQuestions.add(questionKey);
+      return true;
+    });
+  }
+
+  function shuffleRounds(rounds) {
+    const shuffled = [...rounds];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+    }
+    return shuffled;
   }
 
   function loadStoredRounds() {
