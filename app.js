@@ -79,17 +79,33 @@
   }
 
   function drawRing(t) {
-    let d = "";
-    for (let i = 0; i <= RING_POINTS; i++) {
+    const points = [];
+    for (let i = 0; i < RING_POINTS; i++) {
       const angle = (i / RING_POINTS) * Math.PI * 2;
       const n = noise1D(ringNoiseOffsets[i % RING_POINTS] + t * ringSpeed);
       const r = RING_R + n * ringAmplitude;
       const x = RING_CENTER + Math.cos(angle) * r;
       const y = RING_CENTER + Math.sin(angle) * r;
-      d += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
+      points.push({ x, y });
+    }
+
+    const firstMidpoint = midpoint(points[0], points[1]);
+    let d = `M${firstMidpoint.x.toFixed(2)},${firstMidpoint.y.toFixed(2)} `;
+    for (let i = 1; i <= RING_POINTS; i++) {
+      const point = points[i % RING_POINTS];
+      const nextPoint = points[(i + 1) % RING_POINTS];
+      const nextMidpoint = midpoint(point, nextPoint);
+      d += `Q${point.x.toFixed(2)},${point.y.toFixed(2)} ${nextMidpoint.x.toFixed(2)},${nextMidpoint.y.toFixed(2)} `;
     }
     d += "Z";
     ringPath.setAttribute("d", d);
+  }
+
+  function midpoint(firstPoint, secondPoint) {
+    return {
+      x: (firstPoint.x + secondPoint.x) / 2,
+      y: (firstPoint.y + secondPoint.y) / 2,
+    };
   }
 
   /* ---------------------------------------------------------
@@ -215,7 +231,7 @@
       const col = p.hueMix > 0.66 ? colors.b : p.hueMix > 0.33 ? colors.a : colors.c;
       glow.addColorStop(0, col);
       glow.addColorStop(1, "transparent");
-      ctx.globalAlpha = 0.55 * p.life;
+      ctx.globalAlpha = 0.4 * p.life;
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(px, py, p.size * (mode === "charging" ? 1.6 : 1), 0, Math.PI * 2);
