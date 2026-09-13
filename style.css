@@ -253,6 +253,7 @@ textarea{
   stroke-linejoin:round;
   transition: stroke var(--dur-med);
   filter: drop-shadow(0 0 4px var(--helio-a)) drop-shadow(0 0 11px var(--helio-b));
+  animation:helium-ring-breathe 3.6s ease-in-out infinite;
 }
 .theme-day .ring-jagged{
   fill: rgba(31,167,201,.08);
@@ -278,10 +279,17 @@ textarea{
   50%{ transform:translateY(-2px) scale(1.018); }
 }
 
-.spin-btn.charging .ring-jagged{ filter: url(#helio-warp-strong) drop-shadow(0 0 7px var(--helio-a)) drop-shadow(0 0 20px var(--helio-b)); }
+.spin-btn.charging .ring-jagged{
+  filter:url(#helio-warp-strong) drop-shadow(0 0 7px var(--helio-a)) drop-shadow(0 0 20px var(--helio-b));
+  animation:none;
+}
 .spin-btn.charging .ring-svg{ filter:none; }
 .spin-btn.charging .spin-letter-image{ animation:flicker .12s linear infinite; }
 @keyframes flicker{ 0%,100%{ opacity:1;} 50%{ opacity:.55; filter:blur(.4px);} }
+@keyframes helium-ring-breathe{
+  0%,100%{ filter:drop-shadow(0 0 3px var(--helio-a)) drop-shadow(0 0 8px var(--helio-b)); }
+  50%{ filter:drop-shadow(0 0 6px var(--helio-a)) drop-shadow(0 0 15px var(--helio-b)); }
+}
 
 .hint{
   color: var(--text-1);
