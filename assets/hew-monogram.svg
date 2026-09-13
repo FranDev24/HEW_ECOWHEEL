@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <!-- HEW monogram: H + ondas de sonido. Sin anillo exterior (el anillo animado lo da #ring-jagged). Trazos claros para mix-blend screen + glow CSS -->
-  <g stroke="#D8F7FF" stroke-width="7">
-    <!-- H central redondeada -->
-    <path d="M70 62 v30 c0 9 6 13 15 13 h30 c9 0 15 -4 15 -13 V62"/>
-    <path d="M70 138 v-30 c0 -9 6 -13 15 -13 h30 c9 0 15 4 15 13 v30"/>
-    <!-- ondas izquierdas -->
-    <path d="M70 80 C54 88 47 94 47 100 C47 106 54 112 70 120" stroke-width="5.5"/>
-    <path d="M70 70 C48 80 40 89 40 100 C40 111 48 120 70 130" stroke-width="5.5"/>
-    <!-- ondas derechas -->
-    <path d="M130 80 C146 88 153 94 153 100 C153 106 146 112 130 120" stroke-width="5.5"/>
-    <path d="M130 70 C152 80 160 89 160 100 C160 111 152 120 130 130" stroke-width="5.5"/>
+  <!-- HEW monogram exacto (sin circulo exterior: el anillo animado #ring-jagged lo aporta). H simetrica + 3 ondas izq pegadas + 4 ondas der flotantes -->
+  <g stroke="#FFFFFF" stroke-width="6">
+    <path d="M68 60 L68 86 Q68 94 76 94 L124 94 Q132 94 132 86 L132 60"/>
+    <path d="M68 140 L68 114 Q68 106 76 106 L124 106 Q132 106 132 114 L132 140"/>
+    <path d="M68 82 C56 88 56 112 68 118"/>
+    <path d="M68 72 C46 82 46 118 68 128"/>
+    <path d="M68 62 C30 74 30 126 68 138"/>
+    <path d="M144 88 C152 92 152 108 144 112"/>
+    <path d="M144 80 C160 86 160 114 144 120"/>
+    <path d="M144 70 C170 80 170 120 144 130"/>
+    <path d="M144 62 C176 74 176 126 144 138"/>
   </g>
 </svg>
