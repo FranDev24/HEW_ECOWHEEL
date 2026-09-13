@@ -323,22 +323,6 @@ body{
   color: var(--text-1);
 }
 
-.cta-btn{
-  width:100%;
-  padding:19px 22px;
-  border:none;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, var(--helio-a), var(--helio-c));
-  color:#031014;
-  font-size:16px;
-  font-weight:800;
-  letter-spacing:.01em;
-  cursor:pointer;
-  box-shadow: 0 10px 30px rgba(56,228,242,.35), inset 0 1px 0 rgba(255,255,255,.6);
-  transition: transform var(--dur-fast) var(--ease-liquid), box-shadow var(--dur-fast);
-}
-.cta-btn:active{ transform: scale(.97); }
-
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:.001s !important; transition-duration:.001s !important; }
 }

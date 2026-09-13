@@ -301,7 +301,6 @@
   const hintText = document.getElementById("hint-text");
   const resultImage = document.getElementById("result-image");
   const questionText = document.getElementById("question-text");
-  const panelBtnLabel = document.getElementById("panel-btn-label");
   const learnMoreBtn = document.getElementById("learn-more-btn");
   const learnMoreInfo = document.getElementById("learn-more-info");
 
@@ -409,7 +408,6 @@
         resultImage.src = round.image;
         resultImage.alt = round.question;
         questionText.textContent = round.question;
-        panelBtnLabel.textContent = round.action || "1. Panel de Usuario";
         if (round.info) {
           learnMoreBtn.hidden = false;
           learnMoreInfo.hidden = true;
@@ -428,13 +426,6 @@
 
   learnMoreBtn.addEventListener("click", () => {
     learnMoreInfo.hidden = !learnMoreInfo.hidden;
-  });
-
-  document.getElementById("panel-btn").addEventListener("click", () => {
-    // Punto de enganche a la navegación real del panel de usuario.
-    screenResult.hidden = true;
-    screenSpin.hidden = false;
-    resetSpinButton();
   });
 
   /* ---------------------------------------------------------
