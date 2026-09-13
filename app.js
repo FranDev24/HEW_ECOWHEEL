@@ -101,8 +101,10 @@
 
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
     cw = rect.width; ch = rect.height;
-    canvas.width = cw * dpr; canvas.height = ch * dpr;
+    canvas.width = Math.max(1, Math.ceil(cw * dpr));
+    canvas.height = Math.max(1, Math.ceil(ch * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cx = cw / 2; cy = ch / 2;
   }
@@ -238,10 +240,11 @@
   let fogHeight = 0;
   function initFog() {
     const rect = fogCanvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
     fogWidth = rect.width;
     fogHeight = rect.height;
-    fogCanvas.width = rect.width * dpr;
-    fogCanvas.height = rect.height * dpr;
+    fogCanvas.width = Math.max(1, Math.ceil(rect.width * dpr));
+    fogCanvas.height = Math.max(1, Math.ceil(rect.height * dpr));
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     fogBlobs = Array.from({ length: 6 }, () => ({
       x: Math.random() * rect.width,
@@ -277,6 +280,12 @@
   function loop(now) {
     const dt = Math.min((now - lastT) / 1000, 0.05);
     lastT = now;
+
+    if (document.hidden) {
+      requestAnimationFrame(loop);
+      return;
+    }
+
     globalT += dt;
 
     if (mode === "charging") {
@@ -310,6 +319,7 @@
 
   function resetSpinButton() {
     spinBtn.classList.remove("charging");
+    spinBtn.setAttribute("aria-busy", "false");
     mode = "idle";
     hintText.style.opacity = "1";
     hintText.textContent = "Toca el núcleo para iniciar el giro";
@@ -386,6 +396,7 @@
     if (spinning) return;
     spinning = true;
     spinBtn.classList.add("charging");
+    spinBtn.setAttribute("aria-busy", "true");
     mode = "charging";
     modeStart = performance.now();
     hintText.textContent = "Enfriando el resonador…";

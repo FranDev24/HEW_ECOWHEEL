@@ -24,6 +24,7 @@
   --helio-a:#38e4f2;
   --helio-b:#7cf4ff;
   --helio-c:#1c6bd8;
+  --text-glow:rgba(124,244,255,.16);
   --shadow-ambient: 0 30px 80px rgba(0,0,0,.55);
   --specular: rgba(255,255,255,.5);
 }
@@ -42,6 +43,7 @@
   --helio-a:#1fa7c9;
   --helio-b:#2f6fed;
   --helio-c:#0b3fa0;
+  --text-glow:rgba(31,167,201,.12);
   --shadow-ambient: 0 20px 60px rgba(60,64,80,.18);
   --specular: rgba(255,255,255,.9);
 }
@@ -53,10 +55,13 @@
 html,body{
   height:100%;
   margin:0;
-  font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-family: "Avenir Next", "Segoe UI Variable", "Trebuchet MS", sans-serif;
   color:var(--text-0);
   overflow:hidden;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  font-synthesis:none;
 }
 
 body{
@@ -64,6 +69,20 @@ body{
     radial-gradient(120% 90% at 50% -10%, var(--bg-2), transparent 60%),
     linear-gradient(180deg, var(--bg-1), var(--bg-0) 70%);
   transition: background var(--dur-med) var(--ease-liquid), color var(--dur-med);
+  text-shadow:0 0 10px var(--text-glow);
+}
+
+button,
+a,
+input,
+textarea{
+  font:inherit;
+}
+
+:where(button, a, input, textarea):focus-visible{
+  outline:2px solid var(--helio-b);
+  outline-offset:4px;
+  box-shadow:0 0 0 5px color-mix(in srgb, var(--helio-a) 24%, transparent);
 }
 
 .stage{
@@ -239,7 +258,7 @@ body{
   z-index:2;
   font-size: clamp(38px, 9vw, 54px);
   font-weight:800;
-  letter-spacing:-.02em;
+  letter-spacing:0;
   color: var(--helio-b);
   text-shadow: 0 0 18px var(--helio-a), 0 0 40px rgba(56,228,242,.5);
   font-family: "SF Pro Display", -apple-system, sans-serif;
