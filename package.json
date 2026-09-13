@@ -1,0 +1,13 @@
+{
+  "name": "ecowheel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EcoWheel Heliomorfismo",
+  "scripts": {
+    "dev": "http-server . -p 8080 -c-1",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
