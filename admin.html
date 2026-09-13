@@ -7,7 +7,7 @@
 <meta name="description" content="Sube las imágenes y preguntas que aparecerán en el wheel de Ecowheel." />
 <meta name="theme-color" content="#040405" />
 <link rel="stylesheet" href="style.css?v=20260913-16" />
-<link rel="stylesheet" href="admin.css?v=20260913-5" />
+<link rel="stylesheet" href="admin.css?v=20260913-6" />
 </head>
 <body class="theme-night admin-body">
 
@@ -82,6 +82,22 @@
           <button type="button" id="bulk-import-btn" class="save-btn bulk-import-btn">Cargar lote en EcoWheel</button>
           <p id="bulk-status" class="bulk-status" role="status" aria-live="polite"></p>
         </section>
+
+        <section class="bulk-import drive-import" aria-labelledby="drive-title">
+          <h2 id="drive-title" class="bulk-title">Importar desde Google Drive</h2>
+          <p class="bulk-help">Pega el enlace de una <strong>carpeta pública de Drive</strong> (Cualquiera con el enlace puede ver). Las imágenes se emparejan por el número al inicio del nombre: <strong>1.imagenrm.jpg</strong>, <strong>2.cualquier-nombre.png</strong>. Solo se pide autorización de Google si la carpeta es privada.</p>
+          <label class="field-label" for="drive-link-input">Enlace de carpeta Drive</label>
+          <input id="drive-link-input" class="field-input" type="url" inputmode="url" placeholder="https://drive.google.com/drive/folders/ABC123…" autocomplete="off" />
+          <label class="field-label" for="drive-api-key">Clave API de Google (opcional, solo carpetas privadas)</label>
+          <input id="drive-api-key" class="field-input" type="password" placeholder="AIza… (se guarda solo en este navegador)" autocomplete="off" />
+          <div class="drive-actions">
+            <button type="button" id="drive-auth-btn" class="ghost-btn">Autorizar con Google</button>
+            <button type="button" id="drive-import-btn" class="save-btn bulk-import-btn">Traer imágenes de Drive</button>
+          </div>
+          <p id="drive-auth-status" class="bulk-status" role="status" aria-live="polite"></p>
+          <div id="drive-thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
+          <p id="drive-status" class="bulk-status" role="status" aria-live="polite"></p>
+        </section>
       </section>
 
       <!-- Columna derecha: lista -->
@@ -100,6 +116,6 @@
     </div>
   </main>
 
-  <script src="admin.js?v=20260913-7"></script>
+  <script src="admin.js?v=20260913-8"></script>
 </body>
 </html>

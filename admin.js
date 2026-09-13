@@ -135,9 +135,14 @@
     return questions;
   }
 
-  function getImageNumber(file) {
-    const match = file.name.match(/^(\d+)/);
-    return match ? Number(match[1]) : null;
+  function getImageNumber(fileOrName) {
+    // Regla única anti-confusión: el número va AL INICIO del nombre.
+    // Acepta "1.jpg", "1.imagenrm.jpg", "02 - foto.png", "3_cualquier-nombre.webp".
+    const name = typeof fileOrName === "string" ? fileOrName : (fileOrName?.name || "");
+    const match = String(name).trim().match(/^(\d+)\s*[.\-_)}\s:]?/);
+    if (!match) return null;
+    const n = Number(match[1]);
+    return Number.isFinite(n) && n >= 1 && n <= MAX_BULK_ROUNDS ? n : null;
   }
 
   async function importBulk() {
@@ -273,7 +278,214 @@
     }
   });
 
-  /* ---------------- lista de contenido ---------------- */
+  const driveLinkInput = document.getElementById("drive-link-input");
+  const driveApiKeyInput = document.getElementById("drive-api-key");
+  const driveAuthBtn = document.getElementById("drive-auth-btn");
+  const driveImportBtn = document.getElementById("drive-import-btn");
+  const driveAuthStatus = document.getElementById("drive-auth-status");
+  const driveThumbStrip = document.getElementById("drive-thumb-strip");
+  const driveStatus = document.getElementById("drive-status");
+  const GOOGLE_CLIENT_ID_KEY = "ecowheel-gdrive-client-id";
+  let driveAccessToken = null;
+  let driveFiles = [];
+
+  try {
+    const savedKey = localStorage.getItem("ecowheel-gdrive-apikey") || "";
+    if (savedKey) driveApiKeyInput.value = savedKey;
+  } catch { /* noop */ }
+
+  function extractDriveFolderId(link) {
+    const text = String(link || "").trim();
+    const m = text.match(/folders\/([A-Za-z0-9_-]+)/) || text.match(/[?&]id=([A-Za-z0-9_-]+)/);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{10,}$/.test(text)) return text;
+    return null;
+  }
+
+  function refreshDriveUI() {
+    driveThumbStrip.innerHTML = "";
+    driveThumbStrip.hidden = driveFiles.length === 0;
+    driveFiles.slice(0, 24).forEach((f) => {
+      const img = document.createElement("img");
+      img.src = `https://drive.google.com/thumbnail?id=${encodeURIComponent(f.id)}&sz=w256`;
+      img.alt = f.name || "Imagen de Drive";
+      img.decoding = "async";
+      driveThumbStrip.appendChild(img);
+    });
+    if (driveFiles.length > 24) {
+      const more = document.createElement("p");
+      more.className = "bulk-file-count";
+      more.textContent = `… y ${driveFiles.length - 24} más`;
+      driveThumbStrip.appendChild(more);
+    }
+  }
+  async function listDriveImages(folderId) {
+    const key = driveApiKeyInput.value.trim();
+    try { localStorage.setItem("ecowheel-gdrive-apikey", key); } catch { /* noop */ }
+    const query = encodeURIComponent(`'${folderId}' in parents and trashed=false and (mimeType contains 'image/')`);
+    const fields = encodeURIComponent("nextPageToken,files(id,name,mimeType)");
+    let url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&pageSize=250&orderBy=name_natural`;
+    const headers = {};
+    if (driveAccessToken) headers.Authorization = `Bearer ${driveAccessToken}`;
+    else if (key) url += `&key=${encodeURIComponent(key)}`;
+    else {
+      driveStatus.textContent = "Esta carpeta necesita autorización: pulsa «Autorizar con Google» o pega una clave API.";
+      return [];
+    }
+    const out = [];
+    let pageToken = "";
+    for (let page = 0; page < 4 && out.length < MAX_BULK_ROUNDS; page += 1) {
+      const res = await fetch(url + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""), { headers });
+      if (res.status === 401 || res.status === 403) {
+        driveStatus.textContent = "Drive denegó el acceso (401/403): autoriza con Google o haz la carpeta pública (Lector).";
+        return [];
+      }
+      if (!res.ok) {
+        driveStatus.textContent = `Drive respondió ${res.status}. Revisa el enlace o la clave API.`;
+        return [];
+      }
+      const data = await res.json();
+      (data.files || []).forEach((f) => {
+        if (out.length < MAX_BULK_ROUNDS && f?.id && f?.name) out.push({ id: f.id, name: f.name, mimeType: f.mimeType || "image/jpeg" });
+      });
+      pageToken = data.nextPageToken || "";
+      if (!pageToken) break;
+    }
+    return out;
+  }
+
+  async function downloadDriveBlob(file) {
+    if (driveAccessToken) {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`, {
+        headers: { Authorization: `Bearer ${driveAccessToken}` },
+      });
+      if (!res.ok) throw new Error(`Drive media ${res.status}`);
+      return await res.blob();
+    }
+    const key = driveApiKeyInput.value.trim();
+    const pub = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(file.id)}${key ? `&key=${encodeURIComponent(key)}` : ""}`;
+    const res = await fetch(pub);
+    if (!res.ok) throw new Error(`Drive uc ${res.status}`);
+    return await res.blob();
+  }
+
+  function requestDriveAuth() {
+    return new Promise((resolve) => {
+      driveAuthStatus.textContent = "Solicitando autorización de Google… (solo lectura, si es necesario)";
+      let clientId = "";
+      try { clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ""; } catch { /* noop */ }
+      const typed = prompt("Pega tu Google OAuth Client ID (solo para autorizar carpeta privada):", clientId);
+      if (!typed) {
+        driveAuthStatus.textContent = "Autorización cancelada: puedes usar carpetas públicas sin autorizar.";
+        resolve(false);
+        return;
+      }
+      try { localStorage.setItem(GOOGLE_CLIENT_ID_KEY, typed.trim()); } catch { /* noop */ }
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.onload = () => {
+        try {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: typed.trim(),
+            scope: "https://www.googleapis.com/auth/drive.readonly",
+            callback: (resp) => {
+              if (resp?.access_token) {
+                driveAccessToken = resp.access_token;
+                driveAuthStatus.textContent = "✓ Autorizado con Google (solo lectura). Ya puedes traer las imágenes.";
+                resolve(true);
+              } else {
+                driveAuthStatus.textContent = "Google no entregó el permiso. Intenta de nuevo.";
+                resolve(false);
+              }
+            },
+          });
+          client.requestAccessToken({ prompt: "consent" });
+        } catch {
+          driveAuthStatus.textContent = "No se pudo abrir el permiso de Google. Revisa el Client ID.";
+          resolve(false);
+        }
+      };
+      script.onerror = () => {
+        driveAuthStatus.textContent = "Sin conexión a accounts.google.com. Usa carpeta pública + API key.";
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  driveAuthBtn.addEventListener("click", async () => {
+    driveAuthBtn.disabled = true;
+    await requestDriveAuth();
+    driveAuthBtn.disabled = false;
+  });
+
+  async function importFromDrive() {
+    const folderId = extractDriveFolderId(driveLinkInput.value);
+    if (!folderId) {
+      driveStatus.textContent = "Pega un enlace válido de carpeta Drive (…/drive/folders/ABC123) o solo el ID.";
+      return;
+    }
+    driveImportBtn.disabled = true;
+    driveStatus.textContent = "Listando imágenes de la carpeta Drive…";
+    driveFiles = await listDriveImages(folderId);
+    if (!driveFiles.length) {
+      driveImportBtn.disabled = false;
+      refreshDriveUI();
+      return;
+    }
+    refreshDriveUI();
+    const questions = parseBulkQuestions(bulkQuestionsInput.value);
+    if (!questions.size) {
+      driveStatus.textContent = `Encontré ${driveFiles.length} imágenes en Drive. Pega las preguntas (1. …) arriba y pulsa de nuevo.`;
+      driveImportBtn.disabled = false;
+      return;
+    }
+    const byNumber = new Map();
+    driveFiles.forEach((f) => {
+      const n = getImageNumber(f.name);
+      if (n && !byNumber.has(n)) byNumber.set(n, f);
+    });
+    const pairs = [...questions.keys()].filter((n) => byNumber.has(n)).sort((a, b) => a - b).slice(0, MAX_BULK_ROUNDS);
+    if (!pairs.length) {
+      driveStatus.textContent = "Sin coincidencias: el archivo debe empezar con el número de la pregunta (1.imagenrm.jpg ↔ 1. Pregunta).";
+      driveImportBtn.disabled = false;
+      return;
+    }
+    driveStatus.textContent = `Descargando ${pairs.length} imágenes de Drive en máxima resolución…`;
+    const rounds = loadRounds();
+    let ok = 0;
+    for (const number of pairs) {
+      const f = byNumber.get(number);
+      try {
+        const blob = await downloadDriveBlob(f);
+        const ext = (f.name.split(".").pop() || "jpg").slice(0, 5);
+        const file = new File([blob], f.name, { type: blob.type || f.mimeType || "image/jpeg" });
+        const imageId = `img-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
+        await storeImage(imageId, file);
+        rounds.push({
+          id: `r${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 6)}`,
+          question: questions.get(number),
+          info: "",
+          imageId,
+          imageName: `${number}.${ext}`,
+          action: "1. Panel de Usuario",
+          createdAt: Date.now(),
+        });
+        ok += 1;
+        driveStatus.textContent = `Descargando ${ok}/${pairs.length}…`;
+      } catch { /* continúa con el siguiente par */ }
+    }
+    saveRounds(rounds);
+    renderList();
+    driveStatus.textContent = ok
+      ? `✓ ${ok} pares desde Drive cargados en el EcoWheel (numeración 1., 2., 3. intacta).`
+      : "No se pudo descargar ninguna imagen de Drive. Revisa permisos de la carpeta.";
+    driveImportBtn.disabled = false;
+  }
+
+  driveImportBtn.addEventListener("click", importFromDrive);
+
   function renderList() {
     const rounds = loadRounds();
     listCountEl.textContent = `${rounds.length} item${rounds.length === 1 ? "" : "s"}`;

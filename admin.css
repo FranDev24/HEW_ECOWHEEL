@@ -294,6 +294,28 @@
   image-rendering:high-quality;
 }
 
+/* ---------- Importar desde Drive ---------- */
+.drive-import{ margin-top:18px; }
+.drive-actions{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-top:14px;
+}
+.drive-actions .bulk-import-btn{ margin-top:0; flex:1 1 200px; }
+.ghost-btn{
+  flex:0 1 auto;
+  padding:13px 18px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background: rgba(120,130,150,.08);
+  color: var(--text-0);
+  font-size:14px; font-weight:700;
+  cursor:pointer;
+  transition: border-color .2s, transform .2s var(--ease-liquid);
+}
+.ghost-btn:hover{ border-color: var(--helio-a); }
+.ghost-btn:active{ transform:scale(.97); }
+.ghost-btn:disabled{ opacity:.55; cursor:default; }
+
 .preview-card{ padding:0; overflow:hidden; }
 .preview-head{
   display:flex; align-items:center; justify-content:space-between;
