@@ -29,8 +29,6 @@
   const bulkImportBtn = document.getElementById("bulk-import-btn");
   const bulkStatus = document.getElementById("bulk-status");
 
-  const previewThumb = document.getElementById("preview-thumb");
-  const previewPlaceholder = document.getElementById("preview-placeholder");
   const previewQuestion = document.getElementById("preview-question");
   const previewLearn = document.getElementById("preview-learn");
   const previewLearnInfo = document.getElementById("preview-learn-info");
@@ -134,15 +132,6 @@
   function updatePreview() {
     const q = questionInput.value.trim();
     previewQuestion.textContent = q || "¿Qué es un spin?";
-
-    if (currentImages[0]) {
-      previewThumb.src = currentImages[0];
-      previewThumb.hidden = false;
-      previewPlaceholder.hidden = true;
-    } else {
-      previewThumb.hidden = true;
-      previewPlaceholder.hidden = false;
-    }
 
     previewLearn.hidden = false;
     previewLearnInfo.hidden = true;
