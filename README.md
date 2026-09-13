@@ -3,7 +3,7 @@
 > Experiencia web interactiva de ruleta clínica con partículas de helio líquido,
 > UI responsive y panel de configuración local.
 
-**Demo pública:** https://frandev24.github.io/HEW_ECOWHEEL/
+**Demo pública permanente:** https://frandev24.github.io/HEW_ECOWHEEL/
 
 **Panel de configuración:** https://frandev24.github.io/HEW_ECOWHEEL/admin.html
 
