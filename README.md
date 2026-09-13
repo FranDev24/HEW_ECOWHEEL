@@ -1,5 +1,20 @@
 # Ecowheel — Heliomorfismo
 
+> Experiencia web interactiva de ruleta clínica con partículas de helio líquido,
+> UI responsive y panel de configuración local.
+
+**Demo pública:** https://frandev24.github.io/HEW_ECOWHEEL/
+
+**Panel de configuración:** https://frandev24.github.io/HEW_ECOWHEEL/admin.html
+
+## Estado del proyecto
+
+- Publicado con GitHub Pages desde `main`.
+- Sin frameworks ni proceso de compilación.
+- Responsive para móvil, tablet y escritorio.
+- Juego sin repetición dentro de cada ciclo de preguntas.
+- Carga masiva de hasta 250 pares numerados.
+
 Ruleta / juego de azar con una interfaz inspirada en el **Liquid Glass** de iPhone
 18 Pro, reinterpretado como **Heliomorfismo**: el vidrio se comporta como el
 helio líquido que enfría el resonador de una máquina de RM. Al presionar el
@@ -32,6 +47,12 @@ navegador para:
   **"Aprender más"**.
 - Ver una vista previa en vivo idéntica a la identidad visual del wheel.
 - Editar o eliminar preguntas ya guardadas desde la lista inferior.
+- Pegar hasta 250 preguntas desde Word con formato `1. Pregunta`.
+- Cargar hasta 250 imágenes cuyos nombres comiencen con el mismo consecutivo:
+  `1.jpg`, `2.png`, `3.webp`.
+
+El panel empareja cada imagen y pregunta por su número. Las imágenes masivas se
+guardan en IndexedDB para evitar el límite de tamaño de `localStorage`.
 
 El contenido se guarda en el `localStorage` del navegador bajo la clave
 `ecowheel-rounds`. `index.html` (el wheel) lee primero esa clave; si está
@@ -53,7 +74,7 @@ ecowheel/
 ├─ index.html      → el wheel (juego de azar)
 ├─ admin.html       → panel "Configura tu EcoWheel"
 ├─ admin.css        → estilos del panel de administración
-├─ admin.js         → lógica del panel (subida, lista, localStorage)
+├─ admin.js         → lógica del panel, carga masiva e IndexedDB
 ├─ style.css        → tokens de diseño, temas día/noche, vidrio líquido
 ├─ app.js           → motor de partículas, anillo dinámico, flujo del juego
 ├─ config.js        → contenido de respaldo/semilla (si no hay nada guardado)
@@ -81,8 +102,17 @@ elige una al azar cada vez. Coloca tus propias imágenes dentro de `assets/`.
 
 ## Ejecutar en local
 
-No necesita instalación. Basta un servidor estático simple porque el
-navegador bloquea `fetch`/módulos desde `file://`:
+Instala dependencias y ejecuta el servidor de desarrollo:
+
+```bash
+npm install
+npm run dev
+```
+
+Luego abre `http://localhost:8080`.
+
+También puedes usar un servidor estático simple porque el navegador bloquea
+`fetch`/módulos desde `file://`:
 
 ```bash
 # Python
@@ -90,8 +120,6 @@ python3 -m http.server 8080
 
 # o con la extensión "Live Server" de VS Code
 ```
-
-Luego abre `http://localhost:8080`.
 
 ## Publicar gratis con GitHub Pages (link público)
 
@@ -103,6 +131,18 @@ Luego abre `http://localhost:8080`.
    `https://<tu-usuario>.github.io/<nombre-del-repo>/`
 
 Ese link es público, gratuito y cualquiera puede abrirlo sin instalar nada.
+
+## Métricas y visibilidad
+
+GitHub contabiliza actividad del repositorio, como visitas al repositorio,
+clones y contribuciones, desde sus paneles de Insights. GitHub Pages no ofrece
+de forma nativa métricas detalladas de usuarios únicos, sesiones o tiempo de
+uso. Para esas métricas habría que integrar un servicio externo de analítica
+con aviso y consentimiento de privacidad; no se añade un rastreador automático
+para proteger a los usuarios de la comunidad.
+
+El repositorio incluye el código fuente, la demo pública y commits verificables
+en la rama `main`, información útil para la comunidad y reclutadores.
 
 ## Tecnología
 
