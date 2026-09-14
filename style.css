@@ -350,8 +350,11 @@ textarea{
 }
 
 .pill-glass-strong.result-card{
-  width:100%;
-  height:min(58vh, 430px);
+  width:fit-content;
+  max-width:100%;
+  height:auto;
+  max-height:min(58vh, 430px);
+  align-self:center;
   overflow:hidden;
   display:flex;
   align-items:center;
@@ -369,10 +372,10 @@ textarea{
   animation: helium-border 5s ease-in-out infinite;
 }
 .result-card img{
-  max-width:100%;
-  max-height:100%;
   width:auto;
   height:auto;
+  max-width:100%;
+  max-height:calc(min(58vh, 430px) - clamp(16px, 4vmin, 40px));
   object-fit:contain;
   object-position:center;
   background-position:center;
@@ -458,9 +461,12 @@ textarea{
     align-items:center;
   }
 
-  .result-card,
   .question-pill,
   .learn-more-info{
     width:min(100%, 620px);
+  }
+
+  .result-card{
+    max-width:min(100%, 620px);
   }
 }
