@@ -341,9 +341,9 @@
   }
 
   function updateParticles(dt) {
-    // rastro líquido: en vez de borrar, funde con transparencia → motion trail
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(8,8,12,0.18)";
+    // rastro líquido: borra gradualmente (destination-out) para mantener transparencia del fondo
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.fillRect(0, 0, cw, ch);
     if (!particles.length) return;
     const C = helio();

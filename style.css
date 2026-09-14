@@ -14,10 +14,10 @@
 
 /* ---------- Tema NOCHE (Titanio Negro) ---------- */
 .theme-night{
-  /* iPhone 18 Pro negro: fondo negro profundo con micro-matices */
+  /* iPhone 18 Pro negro: fondo NEGRO TOTAL uniforme */
   --bg-0:#000000;
-  --bg-1:#050506;
-  --bg-2:#0e0e10;
+  --bg-1:#000000;
+  --bg-2:#000000;
   --surface: rgba(255,255,255,.055);
   --surface-strong: rgba(255,255,255,.09);
   --border: rgba(255,255,255,.14);
@@ -35,10 +35,10 @@
 
 /* ---------- Tema DÍA (Titanio Plata) ---------- */
 .theme-day{
-  /* iPhone 18 Pro plata: fondo plata brillante neutro */
-  --bg-0:#f5f5f7;
-  --bg-1:#e8e9ed;
-  --bg-2:#d9dadd;
+  /* iPhone 18 Pro plata: fondo PLATA TOTAL uniforme */
+  --bg-0:#E8E8ED;
+  --bg-1:#E8E8ED;
+  --bg-2:#E8E8ED;
   --surface: rgba(255,255,255,.5);
   --surface-strong: rgba(255,255,255,.72);
   --border: rgba(60,64,72,.14);
@@ -71,9 +71,7 @@ html,body{
 }
 
 body{
-  background:
-    radial-gradient(120% 90% at 50% -10%, var(--bg-2), transparent 60%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-0) 70%);
+  background: var(--bg-0);
   transition: background var(--dur-med) var(--ease-liquid), color var(--dur-med);
   text-shadow:0 0 10px var(--text-glow);
 }
@@ -107,11 +105,10 @@ textarea{
   inset:0;
   width:100%;
   height:100%;
-  opacity:.28;
+  opacity:0;
   pointer-events:none;
   display:block;
 }
-.theme-day #fog-canvas{ mix-blend-mode: multiply; opacity:.28; }
 
 /* ---------- Glass primitives: helio líquido (Liquid Glass iOS) ---------- */
 /* Dos capas: brillo especular arriba (luz) + tinte frío abajo (profundidad).
