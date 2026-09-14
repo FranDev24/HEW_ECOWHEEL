@@ -40,7 +40,8 @@
     const a = toRGB(cs.getPropertyValue("--helio-a"), [56, 228, 242]);
     const b = toRGB(cs.getPropertyValue("--helio-b"), [124, 244, 255]);
     const c = toRGB(cs.getPropertyValue("--helio-c"), [28, 107, 216]);
-    return { a, b, c, white: [255, 255, 255] };
+    const accent = toRGB(cs.getPropertyValue("--accent-spark"), [255, 107, 122]);
+    return { a, b, c, white: [255, 255, 255], accent };
   };
   const helio = () => helioCache || (helioCache = readHelio());
 
@@ -82,6 +83,7 @@
     spinBtn.classList.remove("charging");
     spinBtn.setAttribute("aria-busy", "false");
     anim.mode = "idle";
+    try { shards.length = 0; ringFxTarget = 0.8; ringFxAlpha = 0.8; if (ringOuterEl) ringOuterEl.style.opacity = "0.8"; } catch (e) {}
     hintText.style.opacity = "1";
     hintText.classList.remove("is-loading");
     hintText.textContent = "Toca el núcleo para iniciar el giro";
@@ -188,6 +190,103 @@
 
   // ondas de choque concéntricas: anillos que se expanden al estallar el núcleo
   let shockwaves = [];
+
+  /* ============ FX esquirlas anillo exterior (aditivo: no toca Particle) ============
+     Las esquirlas nacen sobre la circunferencia del .ring-outer (CSS) y salen
+     radiales con ease-out + turbulencia + gravedad leve. El aro CSS hace
+     fade-out al explotar y fade-in al reformarse. Nada de esto modifica
+     drawRing(), Particle, glowSprite() ni el flujo de rondas. */
+  const BURST_FX = {
+    COUNT_DESKTOP: 110, COUNT_MOBILE: 60,
+    ACCENT_RATIO: 0.18, CLUSTERS: 3, CLUSTER_ARC: 0.45,
+    SPEED_MIN: 260, SPEED_MAX: 620,
+    DRAG: 2.4, TURB: 0.9, GRAV: 55,
+    FADE_MIN: 0.9, FADE_MAX: 1.7,
+    FADE_OUT: 6.0, FADE_IN: 2.2
+  };
+  const ringOuterEl = document.querySelector(".ring-outer");
+  let ringFxAlpha = 0.8, ringFxTarget = 0.8;
+  const shards = [];
+  const TAU = Math.PI * 2;
+  // .ring-outer inset:0 del wrap; canvas = 1.6x wrap; aro visible ~49% -> 0.306
+  const ringOuterRadius = () => Math.min(cw || 300, ch || 300) * 0.306;
+  function angDist(a, b) { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; }
+  function spawnRingShards() {
+    shards.length = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { ringFxTarget = 0.8; return; }
+    ringFxTarget = 0;
+    const mobile = matchMedia("(max-width: 700px)").matches;
+    const N = mobile ? BURST_FX.COUNT_MOBILE : BURST_FX.COUNT_DESKTOP;
+    const R0 = ringOuterRadius();
+    const clusters = [];
+    for (let i = 0; i < BURST_FX.CLUSTERS; i++) clusters.push(Math.random() * TAU);
+    for (let i = 0; i < N; i++) {
+      const a0 = Math.random() * TAU;
+      const near = clusters.some((ca) => angDist(a0, ca) < BURST_FX.CLUSTER_ARC);
+      const isAccent = (near && Math.random() < 0.5) || Math.random() < 0.03;
+      const depth = 0.35 + Math.random() * 0.65;
+      const size = 1 + depth * 3.2 + (Math.random() < 0.12 ? 1.6 : 0);
+      shards.push({
+        a0: a0, r: R0 * (0.97 + Math.random() * 0.06),
+        vr: BURST_FX.SPEED_MIN + Math.random() * (BURST_FX.SPEED_MAX - BURST_FX.SPEED_MIN),
+        drift: 0, seed: Math.random() * 1000,
+        grav: BURST_FX.GRAV * (0.6 + Math.random() * 0.8),
+        depth: depth, size: size, big: size >= 3, accent: isAccent,
+        tw: Math.random() * TAU, life: 1,
+        fade: BURST_FX.FADE_MIN + Math.random() * (BURST_FX.FADE_MAX - BURST_FX.FADE_MIN)
+      });
+    }
+    let want = Math.round(N * BURST_FX.ACCENT_RATIO), have = 0;
+    for (const s of shards) { if (s.accent) { have++; if (have > want) s.accent = false; } }
+  }
+  function tickRingShards(dt) {
+    if (Math.abs(ringFxAlpha - ringFxTarget) > 0.002) {
+      const sp = ringFxTarget < ringFxAlpha ? BURST_FX.FADE_OUT : BURST_FX.FADE_IN;
+      ringFxAlpha += clamp(ringFxTarget - ringFxAlpha, -dt * sp, dt * sp);
+      if (ringOuterEl) ringOuterEl.style.opacity = ringFxAlpha.toFixed(3);
+    }
+    if (!shards.length) return;
+    let alive = false;
+    for (const s of shards) {
+      if (s.life <= 0) continue;
+      alive = true;
+      s.vr *= Math.max(0, 1 - dt * BURST_FX.DRAG);
+      s.drift += noise1D(s.seed + anim.t * 1.7) * BURST_FX.TURB * dt;
+      s.r += s.vr * dt;
+      s.life -= dt * s.fade;
+      if (s.life < 0) s.life = 0;
+      s.tw += dt * 4;
+    }
+    if (!alive) { shards.length = 0; ringFxTarget = 0.8; }
+  }
+  function drawRingShards() {
+    if (!shards.length) return;
+    const C = helio();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const pass of [false, true]) {
+      ctx.fillStyle = pass ? rgba(C.accent, 1) : "rgba(255,255,255,1)";
+      for (const s of shards) {
+        if (s.accent !== pass || s.life <= 0) continue;
+        const a = s.a0 + s.drift;
+        const px = cx + Math.cos(a) * s.r;
+        const py = cy + Math.sin(a) * s.r + s.grav * (1 - s.life) * 0.35;
+        const tw = 0.6 + 0.4 * Math.sin(s.tw);
+        if (s.big) {
+          const R = Math.max(2, s.size * 3.2 * Math.max(0.25, s.life));
+          ctx.globalAlpha = clamp(s.life * tw, 0, 1);
+          ctx.drawImage(glowSprite(pass ? C.accent : C.white), px - R, py - R, R * 2, R * 2);
+          ctx.fillRect(px - 0.75, py - 0.75, 1.5, 1.5);
+        } else {
+          ctx.globalAlpha = clamp(s.life * tw * 0.9, 0, 1);
+          const w = s.size <= 2 ? 2 : 3;
+          ctx.fillRect(px - w / 2, py - w / 2, w, w);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 
   // BUG FIX: puntero medido en coords del CANVAS (no del botón).
   const pointer = { x: null, y: null, active: false };
@@ -391,6 +490,7 @@
       }
       drawRing(anim.t * 40);
       updateParticles(dt);
+      try { tickRingShards(dt); drawRingShards(); } catch (e) {}
       drawFog(dt);
     }
     requestAnimationFrame(loop);
@@ -500,6 +600,7 @@
 
     spinTimers.push(setTimeout(() => {
       anim.mode = "burst";
+      try { spawnRingShards(); } catch (e) {}
       particles.forEach((p) => {
         if (p.mode === "ring") {
           const a = Math.random() * Math.PI * 2;

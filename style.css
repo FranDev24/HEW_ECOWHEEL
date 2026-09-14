@@ -26,6 +26,7 @@
   --helio-a:#38e4f2;
   --helio-b:#7cf4ff;
   --helio-c:#1c6bd8;
+  --accent-spark:#ff6b7a;
   --text-glow:rgba(124,244,255,.16);
   --shadow-ambient: 0 30px 80px rgba(0,0,0,.55);
   --specular: rgba(255,255,255,.5);
@@ -45,6 +46,7 @@
   --helio-a:#1fa7c9;
   --helio-b:#2f6fed;
   --helio-c:#0b3fa0;
+  --accent-spark:#d33a4e;
   --text-glow:rgba(31,167,201,.12);
   --shadow-ambient: 0 20px 60px rgba(60,64,80,.18);
   --specular: rgba(255,255,255,.9);
@@ -238,6 +240,7 @@ textarea{
   mask:radial-gradient(circle, transparent 45.5%, #000 46.5%, #000 52%, transparent 53%);
   clip-path:circle(50% at 50% 50%);
   animation:rot-slow 40s linear infinite;
+  will-change:opacity;
   opacity:.8;
 }
 @keyframes rot-slow{ to{ transform:rotate(360deg); } }
