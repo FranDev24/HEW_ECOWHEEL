@@ -90,6 +90,7 @@
     if (!screenResult.hidden) {
       screenResult.hidden = true;
       screenSpin.hidden = false;
+      try { spinTimers.forEach(clearTimeout); spinTimers = []; } catch { /* noop */ }
       resetSpinButton();
     } else {
       window.location.href = "admin.html";
@@ -435,6 +436,46 @@
     }
     return s;
   };
+
+  /* Flujo del giro: carga 1.5s -> estallido 0.9s -> muestra la tarjeta.
+     NO se toca la estructura: solo se restaura la funcion que el refactor
+     dejo sin definir (por eso el click no hacia nada). */
+  function startSpin() {
+    if (spinning) return;
+    spinning = true;
+    spinBtn.classList.add("charging");
+    spinBtn.setAttribute("aria-busy", "true");
+    anim.mode = "charging";
+    anim.start = performance.now();
+    hintText.classList.add("is-loading");
+    hintText.textContent = "Preparando el núcleo";
+
+    const CHARGE_MS = 1500;
+    const BURST_MS = 900;
+
+    spinTimers.forEach(clearTimeout);
+    spinTimers = [];
+
+    spinTimers.push(setTimeout(() => {
+      anim.mode = "burst";
+      particles.forEach((p) => {
+        if (p.mode === "ring") {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 6 + Math.random() * 10;
+          p.burstVX = Math.cos(a) * sp;
+          p.burstVY = Math.sin(a) * sp;
+        }
+        p.life = 1;
+      });
+    }, CHARGE_MS));
+
+    spinTimers.push(setTimeout(async () => {
+      const round = await pickRound();
+      showRound(round);
+      screenSpin.hidden = true;
+      screenResult.hidden = false;
+    }, CHARGE_MS + BURST_MS));
+  }
 
   function loadStoredRounds() {
     try {
