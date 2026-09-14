@@ -1,14 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <!-- HEW monogram exacto (sin circulo exterior: el anillo animado #ring-jagged lo aporta). H simetrica + 3 ondas izq pegadas + 4 ondas der flotantes -->
-  <g stroke="#FFFFFF" stroke-width="6">
-    <path d="M68 60 L68 86 Q68 94 76 94 L124 94 Q132 94 132 86 L132 60"/>
-    <path d="M68 140 L68 114 Q68 106 76 106 L124 106 Q132 106 132 114 L132 140"/>
-    <path d="M68 82 C56 88 56 112 68 118"/>
-    <path d="M68 72 C46 82 46 118 68 128"/>
-    <path d="M68 62 C30 74 30 126 68 138"/>
-    <path d="M144 88 C152 92 152 108 144 112"/>
-    <path d="M144 80 C160 86 160 114 144 120"/>
-    <path d="M144 70 C170 80 170 120 144 130"/>
-    <path d="M144 62 C176 74 176 126 144 138"/>
+  <!-- HEW monogram FIEL a la referencia (sin circulo exterior: lo aporta #ring-jagged).
+       H simetrica grande (64/136, 52/148) + 5 arcos izq convergentes + 4 ondas der flotantes + borde exterior
+       Trazo uniforme 5px, puntas redondas, como el original blanco sobre negro. -->
+  <g stroke="#FFFFFF" stroke-width="5">
+    <!-- H: puentes sup/inf con esquinas redondeadas (esqueleto central) -->
+    <path d="M64 52 L64 84 Q64 92 72 92 L128 92 Q136 92 136 84 L136 52"/>
+    <path d="M64 148 L64 116 Q64 108 72 108 L128 108 Q136 108 136 116 L136 148"/>
+    <!-- Lado IZQ: 5 arcos concentricos convergentes (pegados arriba/abajo) -->
+    <path d="M64 52 C20 66 20 134 64 148"/>
+    <path d="M66 54 C34 66 34 134 66 146"/>
+    <path d="M68 58 C46 68 46 132 68 142"/>
+    <path d="M70 64 C56 72 56 128 70 136"/>
+    <path d="M70 76 C62 82 62 118 70 124"/>
+    <!-- Lado DER: borde exterior + 4 ondas flotantes (como la referencia) -->
+    <path d="M136 52 C180 66 180 134 136 148"/>
+    <path d="M164 62 C178 72 178 128 164 138"/>
+    <path d="M156 70 C172 78 172 122 156 130"/>
+    <path d="M148 78 C160 84 160 116 148 122"/>
+    <path d="M140 86 C148 90 148 110 140 114"/>
   </g>
 </svg>
