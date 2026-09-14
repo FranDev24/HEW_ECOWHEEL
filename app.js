@@ -165,12 +165,15 @@
     canvas.height = Math.ceil(ch * dprP);
     ctx.setTransform(dprP, 0, 0, dprP, 0, 0);
     cx = cw / 2; cy = ch / 2;
-    // BUG FIX: radio relativo al canvas real, no al botón.
+    // Confinadas al círculo del botón: órbitas máximas dentro del radio del botón
     const base = Math.min(cw, ch);
-    for (const p of particles) p.baseRadius = base * (0.20 + p.orbit * 0.22);
+    for (const p of particles) p.baseRadius = base * (0.08 + p.orbit * 0.22);
   }
   // radio del núcleo (solo referencia visual): % del canvas
   const coreRadius = () => Math.min(cw, ch) * 0.20;
+  // radio de confinamiento: dentro del círculo del botón de acción (64% del wrap)
+  const btnRadius = () => Math.min(cw, ch) * 0.31;
+  let fxActive = false;
 
   class Particle {
     constructor(i) {
@@ -183,7 +186,7 @@
       this.mode = "ring";
       this.angle = Math.random() * Math.PI * 2;
       const base = Math.min(cw || 300, ch || 300);
-      this.baseRadius = base * (spread ? (0.18 + this.orbit * 0.42) : 0.22);
+      this.baseRadius = base * (spread ? (0.08 + this.orbit * 0.22) : 0.22);
       this.radius = this.baseRadius;
       this.speed = (0.12 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
       this.sizeBase = (0.7 + Math.random() * 2.0) * this.depth;
@@ -341,13 +344,30 @@
   }
 
   function updateParticles(dt) {
-    // rastro líquido: borra gradualmente (destination-out) para mantener transparencia del fondo
+    // SOLO se animan al presionar el botón (charging/burst); fuera, se apagan
+    const fx = anim.mode === "charging" || anim.mode === "burst";
+    if (!fx) {
+      if (fxActive) {
+        fxActive = false;
+        canvas.classList.remove("on");
+        ctx.clearRect(0, 0, cw, ch);
+        shockwaves = [];
+      }
+      return;
+    }
+    fxActive = true;
+    canvas.classList.add("on");
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.fillRect(0, 0, cw, ch);
     if (!particles.length) return;
     const C = helio();
     ctx.globalCompositeOperation = "lighter";
+    // garantía absoluta: nada de lo dibujado sale del círculo del botón
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, btnRadius(), 0, Math.PI * 2);
+    ctx.clip();
 
     const charging = anim.mode === "charging";
     const bursting = anim.mode === "burst";
@@ -379,6 +399,20 @@
         p.dx += p.burstVX * dt * 60;
         p.dy += p.burstVY * dt * 60;
         p.angle += p.speed * 0.02 * dt * 60;
+        // REBOTE: las moléculas nunca salen del círculo del botón de acción
+        const dxc = p.dx, dyc = p.dy;
+        const distC = Math.hypot(dxc, dyc);
+        const maxR = btnRadius() * 0.96;
+        if (distC > maxR) {
+          // reflexionar la velocidad sobre el borde del círculo (rebote elástico)
+          const nx = dxc / distC, ny = dyc / distC;
+          const dot = p.burstVX * nx + p.burstVY * ny;
+          if (dot > 0) {
+            p.burstVX = (p.burstVX - 2 * dot * nx) * 0.72;
+            p.burstVY = (p.burstVY - 2 * dot * ny) * 0.72;
+          }
+          p.dx = nx * maxR; p.dy = ny * maxR;
+        }
         const lifeRate = 0.35 + p.depth * 0.35 + Math.random() * 0.3;
         p.life -= dt * lifeRate;
         if (p.life < 0) p.life = 0;
@@ -428,6 +462,7 @@
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+    ctx.restore(); // libera el clip del círculo del botón
 
     if (bursting && particles.every((p) => p.life <= 0)) {
       anim.mode = "settle";
