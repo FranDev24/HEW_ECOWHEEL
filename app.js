@@ -31,6 +31,12 @@
   const body = document.body;
   const themeBtn = $("theme-btn");
   const themeIcon = $("theme-icon");
+  const spinLogo = $("spin-logo");
+  const LOGO_NIGHT = "assets/logo-blanco.png?v=20260914-logo";
+  const LOGO_DAY = "assets/logo-negro.png?v=20260914-logo";
+  try {
+    [LOGO_NIGHT, LOGO_DAY].forEach((src) => { const im = new Image(); im.src = src; });
+  } catch { /* noop */ }
   const SUN = "M12 3a9 9 0 1 0 9 9c0-.35-.02-.7-.05-1.04A7 7 0 0 1 12 3Z";
   const SUN_FULL = "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-15v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7";
 
@@ -48,6 +54,7 @@
   function applyTheme(theme) {
     body.classList.toggle("theme-night", theme === "night");
     body.classList.toggle("theme-day", theme === "day");
+    if (spinLogo) spinLogo.src = theme === "day" ? LOGO_DAY : LOGO_NIGHT;
     themeIcon.innerHTML = theme === "day"
       ? `<path d="${SUN_FULL}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
       : `<path d="${SUN}" fill="currentColor"/>`;
@@ -76,6 +83,13 @@
   const questionText = $("question-text");
   const learnMoreBtn = $("learn-more-btn");
   const learnMoreInfo = $("learn-more-info");
+  const resultCard = $("result-card");
+  const solutionCue = $("solution-cue");
+  const solutionOverlay = $("solution-overlay");
+  const solutionBackdrop = $("solution-backdrop");
+  const solutionFrame = $("solution-frame");
+  const solutionClose = $("solution-close");
+  const solutionDl = $("solution-dl");
 
   let spinning = false;
   function resetSpinButton() {
@@ -89,6 +103,7 @@
     hintText.textContent = "Toca el núcleo para iniciar el giro";
   }
   backBtn.addEventListener("click", () => {
+    closeSolution();
     if (!screenResult.hidden) {
       screenResult.hidden = true;
       screenSpin.hidden = false;
@@ -502,6 +517,30 @@
   let lastQuestionKey = "";
   let spinTimers = [];
 
+  // Bolsa anti-repetición PERSISTENTE: la bolsa barajada sobrevive recargas
+  // (clave "ecowheel-pool"), así el usuario nunca ve la misma imagen hasta
+  // que se agota todo el mazo — incluso con cargas masivas (250 tarjetas).
+  const POOL_KEY = "ecowheel-pool";
+  function savePool() {
+    try {
+      localStorage.setItem(POOL_KEY, JSON.stringify({
+        sig: roundPoolSignature,
+        last: lastQuestionKey,
+        keys: roundPool.map(keyOf),
+      }));
+    } catch { /* noop */ }
+  }
+  function loadPool() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(POOL_KEY));
+      if (!raw || typeof raw.sig !== "string" || !Array.isArray(raw.keys)) return null;
+      return raw;
+    } catch { return null; }
+  }
+  function clearPool() {
+    try { localStorage.removeItem(POOL_KEY); } catch { /* noop */ }
+  }
+
   const IMAGE_DB_NAME = "ecowheel-images";
   const IMAGE_STORE_NAME = "images";
   let imageDbPromise = null;
@@ -533,6 +572,21 @@
     }
   }
 
+  async function resolvePdfUrl(solutionId) {
+    if (!solutionId) return "";
+    try {
+      const db = await openImageDb();
+      const blob = await new Promise((resolve, reject) => {
+        const req = db.transaction(IMAGE_STORE_NAME).objectStore(IMAGE_STORE_NAME).get(solutionId);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return blob ? URL.createObjectURL(blob) : "";
+    } catch {
+      return "";
+    }
+  }
+
   const keyOf = (r) => String(r?.question || "").trim().toLocaleLowerCase();
 
   async function pickRound() {
@@ -543,9 +597,20 @@
     if (!rounds.length) return null;
 
     const signature = rounds.map((round) => round.question.trim().toLocaleLowerCase()).join("|");
+    const savedPool = loadPool();
     if (signature !== roundPoolSignature || roundPool.length === 0) {
-      roundPool = shuffleRounds(rounds);
-      roundPoolSignature = signature;
+      // Reutiliza la bolsa persistida si el contenido NO cambió (misma firma):
+      // así las recargas de página no reinician el mazo y no se repiten cartas.
+      if (savedPool && savedPool.sig === signature && savedPool.keys.length) {
+        const byKey = new Map(rounds.map((r) => [keyOf(r), r]));
+        roundPool = savedPool.keys.map((k) => byKey.get(k)).filter(Boolean);
+        lastQuestionKey = savedPool.last || "";
+        roundPoolSignature = signature;
+      } else {
+        roundPool = shuffleRounds(rounds);
+        roundPoolSignature = signature;
+        lastQuestionKey = "";
+      }
     }
 
     const tail = roundPool[roundPool.length - 1];
@@ -556,7 +621,12 @@
 
     const round = roundPool.pop();
     lastQuestionKey = keyOf(round);
+    savePool(); // persiste el mazo restante (anti-repetición entre sesiones)
     if (round.imageId) round.image = (await resolveImage(round.imageId)) || round.image || "";
+    if (round.solutionId) {
+      const url = await resolvePdfUrl(round.solutionId);
+      if (url) { round.solutionUrl = url; round.solutionName = round.solutionName || "Solución"; }
+    }
     return round;
   }
 
@@ -584,6 +654,7 @@
      dejo sin definir (por eso el click no hacia nada). */
   function startSpin() {
     if (spinning) return;
+    closeSolution();
     spinning = true;
     spinBtn.classList.add("charging");
     spinBtn.setAttribute("aria-busy", "true");
@@ -633,6 +704,8 @@
         question: r.question || "",
         info: r.info || "",
         action: r.action || "1. Panel de Usuario",
+        solutionId: r.solutionId || "",
+        solutionName: r.solutionName || "",
       }));
     } catch {
       return [];
@@ -641,6 +714,16 @@
 
   // revoca el blob ANTERIOR (no el nuevo en onload: eso rompía la imagen al volver atrás)
   let lastBlobUrl = "";
+  let currentPdfUrl = "";
+  function setSolutionState(url) {
+    if (currentPdfUrl.startsWith("blob:")) { try { URL.revokeObjectURL(currentPdfUrl); } catch { /* noop */ } }
+    currentPdfUrl = url || "";
+    const has = Boolean(currentPdfUrl);
+    resultCard.classList.toggle("has-solution", has);
+    resultCard.classList.remove("is-precessing");
+    solutionCue.hidden = !has;
+    resultCard.setAttribute("aria-label", has ? "Imagen del resultado. Toca para ver la solución en PDF." : "Imagen del resultado");
+  }
   function showRound(round) {
     if (!round) {
       questionText.textContent = "Aún no hay contenido: configúralo en el panel.";
@@ -648,6 +731,7 @@
       resultImage.alt = "";
       learnMoreBtn.hidden = true;
       learnMoreInfo.hidden = true;
+      setSolutionState("");
       return;
     }
     if (lastBlobUrl.startsWith("blob:")) URL.revokeObjectURL(lastBlobUrl);
@@ -667,7 +751,46 @@
       learnMoreInfo.textContent = round.info;
       learnMoreBtn.firstChild.textContent = "Aprender más ";
     }
+    setSolutionState(round.solutionUrl || "");
   }
+
+  /* -------- solución PDF: precesión (trompo) al tocar la imagen -------- */
+  let precessing = false;
+  const prefersReduced = typeof matchMedia === "function"
+    ? matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+  function startSolutionPrecession() {
+    if (precessing || !currentPdfUrl) return;
+    precessing = true;
+    resultCard.classList.remove("is-precessing");
+    void resultCard.offsetWidth; // reinicia la animación
+    resultCard.classList.add("is-precessing");
+    const delay = prefersReduced ? 80 : 1400;
+    setTimeout(() => {
+      openSolution(currentPdfUrl);
+      resultCard.classList.remove("is-precessing");
+      precessing = false;
+    }, delay);
+  }
+  function openSolution(url) {
+    if (!url) return;
+    solutionFrame.src = url;
+    solutionOverlay.hidden = false;
+    if (solutionDl) {
+      solutionDl.href = url;
+      solutionDl.setAttribute("download", "solucion.pdf");
+      solutionDl.hidden = false;
+    }
+  }
+  function closeSolution() {
+    if (solutionOverlay.hidden) return;
+    solutionOverlay.hidden = true;
+    try { solutionFrame.removeAttribute("src"); } catch { /* noop */ }
+  }
+  resultCard.addEventListener("click", startSolutionPrecession);
+  solutionClose.addEventListener("click", closeSolution);
+  solutionBackdrop.addEventListener("click", closeSolution);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSolution(); });
 
   spinBtn.addEventListener("click", startSpin);
 
@@ -678,13 +801,19 @@
   /* ---------------------------------------------------------
      INIT
   --------------------------------------------------------- */
+  // Contador de visitas (lo muestra el panel admin en su píldora).
+  try {
+    const v = parseInt(localStorage.getItem("ecowheel-visits") || "0", 10) || 0;
+    localStorage.setItem("ecowheel-visits", String(v + 1));
+  } catch { /* noop */ }
+
   function init() {
-    resizeCanvas();
+    resizeParticles();
     initFog();
     drawRing(0);
     requestAnimationFrame(loop);
   }
 
-  window.addEventListener("resize", () => { resizeCanvas(); initFog(); });
+  window.addEventListener("resize", () => { resizeParticles(); initFog(); });
   init();
 })();

@@ -9,7 +9,7 @@
 <meta property="og:title" content="Ecowheel — Heliomorfismo" />
 <meta property="og:description" content="Ruleta interactiva con partículas y efectos inspirados en el helio líquido." />
 <meta property="og:url" content="https://frandev24.github.io/HEW_ECOWHEEL/" />
-<link rel="stylesheet" href="style.css?v=20260914-02" />
+<link rel="stylesheet" href="style.css?v=20260914-final" />
 </head>
 <body class="theme-night">
 
@@ -69,7 +69,7 @@
           <svg viewBox="0 0 200 200" class="ring-svg" aria-hidden="true">
             <circle id="ring-jagged" cx="100" cy="100" r="72" class="ring-jagged" />
           </svg>
-          <img class="spin-letter-image" src="assets/hew-monogram.svg?v=20260914-hew4" alt="" aria-hidden="true" draggable="false" />
+          <img id="spin-logo" class="spin-letter-image" src="assets/logo-blanco.png?v=20260914-logo" alt="HEW" aria-hidden="true" draggable="false" />
         </button>
       </div>
 
@@ -78,8 +78,9 @@
 
     <!-- Pantalla 2: resultado -->
     <section class="screen screen-result" id="screen-result" hidden>
-      <div class="result-card pill-glass-strong">
+      <div class="result-card pill-glass-strong" id="result-card">
         <img id="result-image" alt="" decoding="async" />
+        <span id="solution-cue" class="solution-cue" hidden>⚡ Ver solución</span>
       </div>
 
       <div class="pill-glass question-pill" id="question-pill">
@@ -94,9 +95,24 @@
 
     </section>
 
+    <!-- Visor de solución PDF: se abre con el efecto de precesión al tocar la imagen -->
+    <div id="solution-overlay" class="solution-overlay" hidden>
+      <div id="solution-backdrop" class="solution-backdrop" aria-hidden="true"></div>
+      <div class="solution-panel" role="dialog" aria-modal="true" aria-label="Solución de la pregunta">
+        <div class="solution-panel-head">
+          <span class="solution-title">Solución · PDF</span>
+          <div class="solution-panel-actions">
+            <a id="solution-dl" class="solution-dl" download hidden>Descargar PDF</a>
+            <button id="solution-close" class="solution-close" type="button" aria-label="Cerrar solución">×</button>
+          </div>
+        </div>
+        <iframe id="solution-frame" title="Solución en PDF"></iframe>
+      </div>
+    </div>
+
   </div>
 
   <script src="config.js?v=20260913-15"></script>
-  <script src="app.js?v=20260914-02"></script>
+  <script src="app.js?v=20260914-04"></script>
 </body>
 </html>

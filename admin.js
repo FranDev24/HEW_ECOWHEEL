@@ -11,7 +11,7 @@
   "use strict";
 
   const STORAGE_KEY = "ecowheel-rounds";
-  const MAX_IMAGES = 8;
+  const MAX_IMAGES = 250;
   const MAX_BULK_ROUNDS = 250;
   const IMAGE_DB_NAME = "ecowheel-images";
   const IMAGE_STORE_NAME = "images";
@@ -24,13 +24,13 @@
   const form = document.getElementById("round-form");
   const saveBtn = document.getElementById("save-btn");
   const cancelEditBtn = document.getElementById("cancel-edit-btn");
-  const bulkQuestionsInput = document.getElementById("bulk-questions");
-  const bulkDropzone = document.getElementById("bulk-dropzone");
-  const bulkFileInput = document.getElementById("bulk-file-input");
-  const bulkFileCount = document.getElementById("bulk-file-count");
-  const bulkThumbStrip = document.getElementById("bulk-thumb-strip");
-  const bulkImportBtn = document.getElementById("bulk-import-btn");
-  const bulkStatus = document.getElementById("bulk-status");
+  const formStatus = document.getElementById("form-status");
+  const fileCount = document.getElementById("file-count");
+
+  const pdfDropzone = document.getElementById("pdf-dropzone");
+  const pdfInput = document.getElementById("pdf-input");
+  const pdfStrip = document.getElementById("pdf-strip");
+  const pdfCount = document.getElementById("pdf-count");
 
   const listItemsEl = document.getElementById("list-items");
   const listCountEl = document.getElementById("list-count");
@@ -131,41 +131,180 @@
     db.close();
   }
 
-  /* ---------------- subida de imágenes ---------------- */
-  function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  /* ---------------- subida ÚNICA: equipo + Drive alimentan el mismo lote ----------------
+     Una sola zona (dropzone/fileInput) + Drive: todo cae a stagedFiles y se
+     previsualiza en thumbStrip automáticamente. El guardado decide:
+     1 pregunta -> 1 tarjeta con la primera imagen; lista "1. .. 2. .." ->
+     N tarjetas emparejadas por número de archivo. */
+  let stagedFiles = []; // File[] acumulados (equipo o descargados de Drive)
+  const stagedUrls = new Map(); // File -> objectURL para preview inmediata
+  let stagedPdfs = []; // File[] PDF de solución acumulados (numerados 1. 2. 3.…)
+
+  function setStatus(msg, ok) {
+    if (!formStatus) return;
+    formStatus.textContent = msg || "";
+    formStatus.classList.toggle("is-ok", !!ok);
   }
 
-  async function handleFiles(fileList) {
-    const files = Array.from(fileList).slice(0, MAX_IMAGES - currentImages.length);
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      try {
-        const dataUrl = await fileToDataURL(file);
-        currentImages.push(dataUrl);
-      } catch (e) { /* ignorar archivo fallido */ }
+  function refreshStagedUI() {
+    const count = stagedFiles.length;
+    if (fileCount) {
+      fileCount.hidden = count === 0;
+      if (count > 0) fileCount.textContent = `✓ ${count} imagen${count === 1 ? "" : "es"} lista${count === 1 ? "" : "s"} para emparejar`;
     }
-    renderThumbs();
-  }
-
-  function renderThumbs() {
     thumbStrip.innerHTML = "";
-    thumbStrip.hidden = currentImages.length === 0;
-    currentImages.forEach((src, i) => {
+    thumbStrip.hidden = count === 0;
+    // Preview automática: hasta 24 para no saturar el DOM; el resto se cuenta.
+    stagedFiles.slice(0, 24).forEach((file, i) => {
+      let url = stagedUrls.get(file);
+      if (!url) { url = URL.createObjectURL(file); stagedUrls.set(file, url); }
       const item = document.createElement("div");
       item.className = "thumb-item";
-      item.innerHTML = `<img src="${src}" alt="Imagen ${i + 1}" />
-        <button type="button" class="thumb-remove" aria-label="Quitar imagen">×</button>`;
-      item.querySelector(".thumb-remove").addEventListener("click", () => {
-        currentImages.splice(i, 1);
-        renderThumbs();
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = file.name || `Imagen ${i + 1}`;
+      img.decoding = "async";
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "thumb-remove";
+      rm.setAttribute("aria-label", "Quitar imagen");
+      rm.textContent = "×";
+      rm.addEventListener("click", () => {
+        const url2 = stagedUrls.get(file);
+        if (url2) { try { URL.revokeObjectURL(url2); } catch { /* noop */ } stagedUrls.delete(file); }
+        stagedFiles = stagedFiles.filter((f) => f !== file);
+        syncFileInput();
+        refreshStagedUI();
       });
+      item.appendChild(img);
+      item.appendChild(rm);
       thumbStrip.appendChild(item);
+    });
+    if (count > 24) {
+      const more = document.createElement("p");
+      more.className = "bulk-file-count";
+      more.textContent = `… y ${count - 24} más`;
+      thumbStrip.appendChild(more);
+    }
+  }
+
+  function syncFileInput() {
+    try {
+      const dt = new DataTransfer();
+      stagedFiles.forEach((f) => dt.items.add(f));
+      fileInput.files = dt.files;
+    } catch { /* Safari antiguo: se sigue con stagedFiles */ }
+  }
+
+  function addStagedFiles(fileList) {
+    const incoming = Array.from(fileList || []).filter((f) => f && f.type && f.type.startsWith("image/"));
+    if (!incoming.length) return 0;
+    const seen = new Set(stagedFiles.map((f) => `${f.name}::${f.size}::${f.lastModified || 0}`));
+    let added = 0;
+    for (const file of incoming) {
+      const key = `${file.name}::${file.size}::${file.lastModified || 0}`;
+      if (seen.has(key)) continue;
+      if (stagedFiles.length >= MAX_IMAGES) break;
+      seen.add(key);
+      stagedFiles.push(file);
+      added += 1;
+    }
+    syncFileInput();
+    refreshStagedUI();
+    return added;
+  }
+
+  // Vista previa automática del lote en curso (stagedFiles = File reales).
+  // Durante una EDICIÓN sin archivos nuevos, pinta además la imagen actual
+  // de la tarjeta (currentImages) para que siempre se vea lo cargado.
+  function renderThumbs() {
+    refreshStagedUI();
+    if (!stagedFiles.length && currentImages.length) {
+      thumbStrip.hidden = false;
+      currentImages.slice(0, 24).forEach((src, i) => {
+        const item = document.createElement("div");
+        item.className = "thumb-item";
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `Imagen actual ${i + 1}`;
+        img.decoding = "async";
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "thumb-remove";
+        rm.setAttribute("aria-label", "Quitar imagen actual");
+        rm.textContent = "×";
+        rm.addEventListener("click", () => {
+          currentImages = [];
+          renderThumbs();
+        });
+        item.appendChild(img);
+        item.appendChild(rm);
+        thumbStrip.appendChild(item);
+      });
+    }
+  }
+
+  const isPdf = (f) => f && (f.type === "application/pdf" || /\.pdf$/i.test(String(f.name || "")));
+
+  function syncPdfInput() {
+    try {
+      const dt = new DataTransfer();
+      stagedPdfs.forEach((f) => dt.items.add(f));
+      pdfInput.files = dt.files;
+    } catch { /* Safari antiguo: se sigue con stagedPdfs */ }
+  }
+
+  function addStagedPdfs(fileList) {
+    const incoming = Array.from(fileList || []).filter(isPdf);
+    if (!incoming.length) return 0;
+    const seen = new Set(stagedPdfs.map((f) => `${f.name}::${f.size}::${f.lastModified || 0}`));
+    let added = 0;
+    for (const file of incoming) {
+      const key = `${file.name}::${file.size}::${file.lastModified || 0}`;
+      if (seen.has(key)) continue;
+      if (stagedPdfs.length >= MAX_IMAGES) break;
+      seen.add(key);
+      stagedPdfs.push(file);
+      added += 1;
+    }
+    syncPdfInput();
+    refreshPdfUI();
+    return added;
+  }
+
+  function refreshPdfUI() {
+    const n = stagedPdfs.length;
+    if (pdfCount) {
+      pdfCount.hidden = n === 0;
+      if (n > 0) pdfCount.textContent = `✓ ${n} PDF de solución${n === 1 ? "" : "es"} listo${n === 1 ? "" : "s"} para emparejar`;
+    }
+    if (!pdfStrip) return;
+    pdfStrip.innerHTML = "";
+    pdfStrip.hidden = n === 0;
+    stagedPdfs.forEach((file, i) => {
+      const item = document.createElement("div");
+      item.className = "pdf-item";
+      const badge = document.createElement("span");
+      badge.className = "pdf-badge";
+      badge.textContent = "PDF";
+      const name = document.createElement("span");
+      name.className = "pdf-name";
+      name.textContent = file.name || `Solución ${i + 1}`;
+      name.title = file.name || "";
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "thumb-remove";
+      rm.setAttribute("aria-label", "Quitar PDF");
+      rm.textContent = "×";
+      rm.addEventListener("click", () => {
+        stagedPdfs = stagedPdfs.filter((x) => x !== file);
+        syncPdfInput();
+        refreshPdfUI();
+      });
+      item.appendChild(badge);
+      item.appendChild(name);
+      item.appendChild(rm);
+      pdfStrip.appendChild(item);
     });
   }
 
@@ -173,7 +312,13 @@
   dropzone.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
   });
-  fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+  fileInput.addEventListener("change", (e) => {
+    if (!e.target.files?.length) return; // reset del input: no pinta mensaje
+    addStagedFiles(e.target.files);
+    fileInput.value = ""; // permite re-elegir el mismo archivo
+    syncFileInput();
+    setStatus(stagedFiles.length ? "" : "Sube al menos 1 imagen (equipo o Drive).", false);
+  });
 
   ["dragenter", "dragover"].forEach((evt) =>
     dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); })
@@ -182,16 +327,54 @@
     dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); })
   );
   dropzone.addEventListener("drop", (e) => {
-    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    if (e.dataTransfer?.files?.length) addStagedFiles(e.dataTransfer.files);
   });
 
-  /* ---------------- carga masiva: numeración intacta ---------------- */
+  pdfDropzone.addEventListener("click", () => pdfInput.click());
+  pdfDropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pdfInput.click(); }
+  });
+  pdfInput.addEventListener("change", (e) => {
+    if (!e.target.files?.length) return;
+    addStagedPdfs(e.target.files);
+    pdfInput.value = "";
+    syncPdfInput();
+  });
+  ["dragenter", "dragover"].forEach((evt) =>
+    pdfDropzone.addEventListener(evt, (e) => { e.preventDefault(); pdfDropzone.classList.add("dragover"); })
+  );
+  ["dragleave", "drop"].forEach((evt) =>
+    pdfDropzone.addEventListener(evt, (e) => { e.preventDefault(); pdfDropzone.classList.remove("dragover"); })
+  );
+  pdfDropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer?.files?.length) addStagedPdfs(e.dataTransfer.files);
+  });
+
+  /* ---------------- parseo único: 1 pregunta o lista "1. .." ----------------
+     Acepta saltos de línea o todo en una línea ("1. A 2. B 3. C").
+     Devuelve Map(numero -> texto). Si no hay números, el texto completo es la #1. */
   function parseBulkQuestions(text) {
     const questions = new Map();
-    text.split(/\r?\n/).forEach((line) => {
-      const match = line.match(/^\s*(\d+)\s*[.)\-:]\s*(.+?)\s*$/);
-      if (match && match[2]) questions.set(Number(match[1]), match[2]);
-    });
+    const raw = String(text || "").trim();
+    if (!raw) return questions;
+    const cleaned = raw.replace(/\r/g, "\n");
+    const numbered = [...cleaned.matchAll(/(?:^|\n)\s*(\d+)\s*[.)\-:]\s*([\s\S]*?)(?=(?:\n\s*\d+\s*[.)\-:])|$)/g)];
+    if (numbered.length) {
+      numbered.forEach((m) => {
+        const n = Number(m[1]);
+        const q = String(m[2] || "").replace(/\s+/g, " ").trim();
+        if (Number.isFinite(n) && n >= 1 && n <= MAX_BULK_ROUNDS && q) questions.set(n, q);
+      });
+      // Respaldo: si el regex no capturó pero hay líneas "N. texto", línea por línea.
+      if (!questions.size) {
+        cleaned.split(/\n/).forEach((line) => {
+          const match = line.match(/^\s*(\d+)\s*[.)\-:]\s*(.+?)\s*$/);
+          if (match && match[2]) questions.set(Number(match[1]), match[2].trim());
+        });
+      }
+      return questions;
+    }
+    questions.set(1, raw.replace(/\s+/g, " ").trim());
     return questions;
   }
 
@@ -206,11 +389,11 @@
   }
 
   async function importBulk() {
-    const questions = parseBulkQuestions(bulkQuestionsInput.value);
-    const files = Array.from(bulkFileInput.files || []).filter((file) => file.type.startsWith("image/"));
+    const questions = parseBulkQuestions(questionInput.value);
+    const files = Array.from(fileInput.files?.length ? fileInput.files : stagedFiles).filter((file) => file.type.startsWith("image/"));
     if (!questions.size || !files.length) {
-      bulkStatus.textContent = "Agrega preguntas numeradas e imágenes numeradas para continuar.";
-      return;
+      setStatus("Escribe la pregunta (o lista 1. 2. 3.) y sube al menos 1 imagen.", false);
+      return 0;
     }
 
     const images = new Map();
@@ -218,126 +401,69 @@
       const number = getImageNumber(file);
       if (number && !images.has(number)) images.set(number, file);
     });
-    const pairs = [...questions.keys()]
+    // Caso simple: 1 sola pregunta sin número -> usa la primera imagen tal cual.
+    const singleQuestion = questions.size === 1 && questions.has(1) && ![...files].some((f) => getImageNumber(f));
+    let pairs = [...questions.keys()]
       .filter((number) => images.has(number))
       .sort((a, b) => a - b)
       .slice(0, MAX_BULK_ROUNDS);
+    if (singleQuestion) pairs = [1];
     if (!pairs.length) {
-      bulkStatus.textContent = "No hay coincidencias: revisa que el número del archivo y la pregunta sea igual.";
-      return;
+      setStatus("No hay coincidencias: revisa que el número del archivo y la pregunta sea igual.", false);
+      return 0;
     }
 
-    bulkImportBtn.disabled = true;
-    bulkStatus.textContent = `Preparando ${pairs.length} pares numerados…`;
+    saveBtn.disabled = true;
+    setStatus(`Preparando ${pairs.length} tarjeta${pairs.length === 1 ? "" : "s"}…`, false);
     const rounds = loadRounds();
+    const infoText = infoInput.value.trim();
+    // Soluciones PDF: se emparejan por el número al inicio del nombre
+    // (1.solucion.pdf -> tarjeta #1), igual que imágenes y preguntas.
+    const pdfsByNumber = new Map();
+    // Solo se emparejan PDFs cuando el modo elegido es "Cargar PDF";
+    // en modo "Redactar" la solución es el texto escrito (info).
+    if (solutionMode === "pdf") {
+      stagedPdfs.forEach((file) => {
+        const n = getImageNumber(file);
+        if (n && !pdfsByNumber.has(n)) pdfsByNumber.set(n, file);
+      });
+    }
     for (const number of pairs) {
-      const file = images.get(number);
+      const file = singleQuestion ? files[0] : images.get(number);
       const imageId = `img-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
       await storeImage(imageId, file);
+      // PDF de solución de esta tarjeta (1 sola pregunta -> primer PDF del lote).
+      const solutionFile = singleQuestion ? (pdfsByNumber.get(1) || stagedPdfs[0]) : pdfsByNumber.get(number);
+      let solutionId = "";
+      if (solutionFile) {
+        solutionId = `pdf-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
+        await storeImage(solutionId, solutionFile);
+      }
       rounds.push({
         id: `r${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 6)}`,
         question: questions.get(number),
-        info: "",
+        info: solutionMode === "write" ? infoText : (pairs.length === 1 ? infoText : ""),
         imageId,
         imageName: file.name,
+        solutionId,
+        solutionName: solutionFile ? solutionFile.name : "",
         action: "1. Panel de Usuario",
         createdAt: Date.now(),
       });
     }
     saveRounds(rounds);
-    bulkStatus.textContent = `✓ ${pairs.length} pares cargados. Los números mantienen cada imagen junto a su pregunta.`;
-    bulkImportBtn.disabled = false;
+    setStatus(`✓ ${pairs.length} tarjeta${pairs.length === 1 ? " guardada" : "s guardadas"} en el EcoWheel.`, true);
+    saveBtn.disabled = false;
     renderList();
-    const firstFile = images.get(pairs[0]);
-    currentImages = [await fileToDataURL(firstFile)];
-    questionInput.value = questions.get(pairs[0]);
-    renderThumbs();
+    resetForm(); // limpia el formulario + lote unificado (equipo o Drive)
+    return pairs.length;
   }
 
-  /* ---------------- carga masiva: dropzone + memoria acumulativa ---------------- */
-  // NOTA: no tocamos parseBulkQuestions / getImageNumber / importBulk.
-  // Solo añadimos una capa de UX (dropzone + buffer) que alimenta a bulkFileInput.files.
-  let bulkFiles = []; // buffer acumulativo: clic + varios drops se suman hasta 250
-
-  function refreshBulkUI() {
-    const count = bulkFiles.length;
-    bulkFileCount.hidden = count === 0;
-    if (count > 0) {
-      bulkFileCount.textContent = `✓ ${count} imagen${count === 1 ? "" : "es"} lista${count === 1 ? "" : "s"} para emparejar`;
-    }
-    bulkThumbStrip.innerHTML = "";
-    bulkThumbStrip.hidden = count === 0;
-    // Vista previa liviana: solo las primeras 24 para no saturar el DOM con 250 imgs
-    bulkFiles.slice(0, 24).forEach((file, i) => {
-      const url = URL.createObjectURL(file);
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = file.name || `Imagen ${i + 1}`;
-      img.decoding = "async";
-      // Alta resolución: el navegador conserva el bitmap original; contain evita recorte
-      img.onload = () => URL.revokeObjectURL(url);
-      bulkThumbStrip.appendChild(img);
-    });
-    if (count > 24) {
-      const more = document.createElement("p");
-      more.className = "bulk-file-count";
-      more.textContent = `… y ${count - 24} más`;
-      bulkThumbStrip.appendChild(more);
-    }
-  }
-
-  function addBulkFiles(fileList) {
-    const incoming = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
-    if (!incoming.length) return;
-    // Acumula sin duplicar por (nombre + tamaño) y respeta el tope de 250
-    const seen = new Set(bulkFiles.map((f) => `${f.name}::${f.size}`));
-    for (const file of incoming) {
-      const key = `${file.name}::${file.size}`;
-      if (seen.has(key)) continue;
-      if (bulkFiles.length >= MAX_BULK_ROUNDS) break;
-      seen.add(key);
-      bulkFiles.push(file);
-    }
-    // Sincroniza el <input> real para que importBulk() siga leyendo bulkFileInput.files sin cambios
-    const dt = new DataTransfer();
-    bulkFiles.forEach((f) => dt.items.add(f));
-    bulkFileInput.files = dt.files;
-    refreshBulkUI();
-  }
-
-  bulkDropzone.addEventListener("click", () => bulkFileInput.click());
-  bulkDropzone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); bulkFileInput.click(); }
-  });
-  bulkFileInput.addEventListener("change", (e) => {
-    addBulkFiles(e.target.files);
-    bulkFileInput.value = ""; // permite re-elegir el mismo archivo si se desea
-    const dt = new DataTransfer();
-    bulkFiles.forEach((f) => dt.items.add(f));
-    bulkFileInput.files = dt.files;
-  });
-
-  ["dragenter", "dragover"].forEach((evt) =>
-    bulkDropzone.addEventListener(evt, (e) => { e.preventDefault(); bulkDropzone.classList.add("dragover"); })
-  );
-  ["dragleave", "drop"].forEach((evt) =>
-    bulkDropzone.addEventListener(evt, (e) => { e.preventDefault(); bulkDropzone.classList.remove("dragover"); })
-  );
-  bulkDropzone.addEventListener("drop", (e) => {
-    if (e.dataTransfer?.files?.length) addBulkFiles(e.dataTransfer.files);
-  });
-
-  bulkImportBtn.addEventListener("click", async () => {
-    await importBulk();
-    // Limpia el buffer solo si el lote se cargó con éxito (el status empieza con ✓)
-    if (bulkStatus.textContent.startsWith("✓")) {
-      bulkFiles = [];
-      const dt = new DataTransfer();
-      bulkFileInput.files = dt.files;
-      refreshBulkUI();
-    }
-  });
-
+  /* ------------------------------------------------------------------
+     Importar desde Google Drive.
+     La subida de archivos es UNA SOLA zona (dropzone) arriba; aquí solo
+     vive el importador de carpetas públicas/privadas de Drive.
+     ------------------------------------------------------------------ */
   const driveLinkInput = document.getElementById("drive-link-input");
   const driveApiKeyInput = document.getElementById("drive-api-key");
   const driveAuthBtn = document.getElementById("drive-auth-btn");
@@ -363,6 +489,7 @@
   }
 
   function refreshDriveUI() {
+    if (!driveThumbStrip) return;
     driveThumbStrip.innerHTML = "";
     driveThumbStrip.hidden = driveFiles.length === 0;
     driveFiles.slice(0, 24).forEach((f) => {
@@ -495,7 +622,7 @@
       return;
     }
     refreshDriveUI();
-    const questions = parseBulkQuestions(bulkQuestionsInput.value);
+    const questions = parseBulkQuestions(questionInput.value);
     if (!questions.size) {
       driveStatus.textContent = `Encontré ${driveFiles.length} imágenes en Drive. Pega las preguntas (1. …) arriba y pulsa de nuevo.`;
       driveImportBtn.disabled = false;
@@ -506,17 +633,25 @@
       const n = getImageNumber(f.name);
       if (n && !byNumber.has(n)) byNumber.set(n, f);
     });
-    const pairs = [...questions.keys()].filter((n) => byNumber.has(n)).sort((a, b) => a - b).slice(0, MAX_BULK_ROUNDS);
+    // Igual que en equipo: 1 sola pregunta sin numeración usa la primera imagen.
+    const singleQuestion = questions.size === 1 && questions.has(1) && !driveFiles.some((f) => getImageNumber(f));
+    const pairs = singleQuestion ? [1] : [...questions.keys()].filter((n) => byNumber.has(n)).sort((a, b) => a - b).slice(0, MAX_BULK_ROUNDS);
     if (!pairs.length) {
       driveStatus.textContent = "Sin coincidencias: el archivo debe empezar con el número de la pregunta (1.imagenrm.jpg ↔ 1. Pregunta).";
       driveImportBtn.disabled = false;
       return;
     }
     driveStatus.textContent = `Descargando ${pairs.length} imágenes de Drive en máxima resolución…`;
+    // Guarda el enlace como predeterminado si el usuario lo pidió:
+    // la próxima vez se rellena solo y la conexión es directa (sin alucinaciones).
+    const driveSaveCb = document.getElementById("drive-save-link");
+    if (driveSaveCb && driveSaveCb.checked) {
+      try { localStorage.setItem("ecowheel-drive-link", driveLinkInput.value.trim()); } catch { /* noop */ }
+    }
     const rounds = loadRounds();
     let ok = 0;
     for (const number of pairs) {
-      const f = byNumber.get(number);
+      const f = singleQuestion ? driveFiles[0] : byNumber.get(number);
       try {
         const blob = await downloadDriveBlob(f);
         const ext = (f.name.split(".").pop() || "jpg").slice(0, 5);
@@ -562,13 +697,14 @@
       const row = document.createElement("div");
       row.className = "list-item";
       const imgCount = round.imageId ? 1 : (round.images ? round.images.length : (round.image ? 1 : 0));
+      const solBadge = round.solutionId ? `<span class="list-item-sol" title="Solución en PDF: ${escapeHtml(round.solutionName || "")}">PDF</span>` : "";
       row.innerHTML = `
         <div class="list-item-thumb" data-thumb>
           <span class="thumb-fallback" aria-hidden="true">?</span>
         </div>
         <div class="list-item-body">
           <div class="list-item-question">${escapeHtml(round.question)}</div>
-          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${imgCount} img</div>
+          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${imgCount} img ${solBadge}</div>
         </div>
         <div class="list-item-actions">
           <button type="button" data-action="edit" aria-label="Editar" title="Editar">
@@ -634,6 +770,11 @@
     editingId = null;
     form.reset();
     currentImages = [];
+    stagedFiles = [];
+    stagedUrls.forEach((url) => { try { URL.revokeObjectURL(url); } catch { /* noop */ } });
+    stagedUrls.clear();
+    stagedPdfs = [];
+    try { fileInput.value = ""; } catch { /* noop */ }
     renderThumbs();
     saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Guardar en EcoWheel`;
     cancelEditBtn.hidden = true;
@@ -649,6 +790,9 @@
       forgetThumbUrl(target.imageId);
       await deleteImageBlob(target.imageId);
     }
+    if (target?.solutionId) {
+      await deleteImageBlob(target.solutionId);
+    }
     saveRounds(rest);
     renderList();
     if (editingId === id) resetForm();
@@ -656,36 +800,124 @@
 
   cancelEditBtn.addEventListener("click", resetForm);
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const question = questionInput.value.trim();
     if (!question) { questionInput.focus(); return; }
-    if (!currentImages.length) { dropzone.focus(); return; }
 
-    const rounds = loadRounds();
-
+    // --- Modo edición: actualiza SOLO la tarjeta en curso ---
     if (editingId) {
+      const rounds = loadRounds();
       const idx = rounds.findIndex((r) => r.id === editingId);
-      if (idx !== -1) {
-        rounds[idx] = { ...rounds[idx], question, info: infoInput.value.trim(), images: currentImages };
+      if (idx === -1) return;
+      const patch = { question, info: infoInput.value.trim() };
+      // Si durante la edición se subió un PDF nuevo, reemplaza la solución
+      // de la tarjeta (blob nuevo en IndexedDB y limpieza del anterior).
+      if (stagedPdfs[0]) {
+        const prevSolId = rounds[idx].solutionId;
+        const pdfFile = stagedPdfs[0];
+        const solutionId = `pdf-${Date.now().toString(36)}-edit-${Math.random().toString(36).slice(2, 7)}`;
+        await storeImage(solutionId, pdfFile);
+        if (prevSolId) void deleteImageBlob(prevSolId);
+        patch.solutionId = solutionId;
+        patch.solutionName = pdfFile.name;
       }
-    } else {
-      rounds.push({
-        id: "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        question,
-        info: infoInput.value.trim(),
-        images: currentImages,
-        action: "1. Panel de Usuario",
-        createdAt: Date.now(),
-      });
+      // Si durante la edición se subió una imagen nueva, reemplaza la imagen
+      // de la tarjeta (blob nuevo en IndexedDB y limpieza del antiguo).
+      if (stagedFiles[0]) {
+        const prevId = rounds[idx].imageId;
+        const file = stagedFiles[0];
+        const imageId = "img-" + Date.now().toString(36) + "-edit-" + Math.random().toString(36).slice(2, 7);
+        await storeImage(imageId, file);
+        if (prevId) { forgetThumbUrl(prevId); void deleteImageBlob(prevId); }
+        patch.imageId = imageId;
+        patch.imageName = file.name;
+        patch.images = undefined;
+      }
+      rounds[idx] = { ...rounds[idx], ...patch };
+      if (patch.images === undefined) delete rounds[idx].images;
+      saveRounds(rounds);
+      renderList();
+      resetForm();
+      return;
     }
 
-    saveRounds(rounds);
-    renderList();
+    // --- Modo crear: UNA SOLA zona que funciona igual que antes.
+    // 1 pregunta -> 1 tarjeta con la primera imagen.
+    // Lista "1. … 2. …" -> N tarjetas emparejadas por número de imagen. ---
+    void importBulk();
+  });
+
+  /* ---------------- Modo de solución: Redactar (texto) vs PDF ---------------- */
+  const solutionModeEl = document.getElementById("solution-mode");
+  const blockWrite = document.getElementById("block-write");
+  const blockPdf = document.getElementById("block-pdf");
+  let solutionMode = "pdf";
+  function applySolutionMode(mode) {
+    solutionMode = mode === "write" ? "write" : "pdf";
+    solutionModeEl?.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.mode === solutionMode));
+    if (blockWrite) blockWrite.hidden = solutionMode !== "write";
+    if (blockPdf) blockPdf.hidden = solutionMode !== "pdf";
+  }
+  solutionModeEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (btn) applySolutionMode(btn.dataset.mode);
+  });
+  applySolutionMode("pdf");
+
+  /* ---------------- Reinicio total (botón flecha, esquina superior) ---------------- */
+  const resetAllBtn = document.getElementById("reset-all-btn");
+  resetAllBtn?.addEventListener("click", async () => {
+    const ok = window.confirm(
+      "¿Reiniciar TODO el EcoWheel?\n\n" +
+      "Se borrará: preguntas, imágenes, soluciones (PDF), el enlace de Drive guardado, " +
+      "el contador de visitas y el mazo anti-repetición.\n\n" +
+      "Después podrás volver a cargar contenido y enlazar Drive desde cero."
+    );
+    if (!ok) return;
+    ["ecowheel-rounds", "ecowheel-pool", "ecowheel-drive-link", "ecowheel-gdrive-client-id", "ecowheel-visits"]
+      .forEach((k) => { try { localStorage.removeItem(k); } catch { /* noop */ } });
+    // Limpieza total de blobs (imágenes + PDFs) en IndexedDB.
+    try {
+      const db = await openImageDb();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+        tx.objectStore(IMAGE_STORE_NAME).clear();
+        tx.oncomplete = res;
+        tx.onerror = () => rej(tx.error);
+      });
+      db.close();
+    } catch { /* noop */ }
+    thumbUrlCache.forEach((url) => { try { URL.revokeObjectURL(url); } catch { /* noop */ } });
+    thumbUrlCache.clear();
     resetForm();
+    renderList();
+    if (driveLinkInput) driveLinkInput.value = "";
+    const driveSaveCb = document.getElementById("drive-save-link");
+    if (driveSaveCb) driveSaveCb.checked = true;
+    setStatus("♻️ EcoWheel reiniciado. Pega tu enlace de Drive y vuelve a guardar el contenido.", true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   /* ---------------- init ---------------- */
+  // Enlace de Drive predeterminado: se rellena solo si se guardó antes.
+  try {
+    const savedDriveLink = localStorage.getItem("ecowheel-drive-link");
+    if (savedDriveLink && driveLinkInput && !driveLinkInput.value) driveLinkInput.value = savedDriveLink;
+  } catch { /* noop */ }
+  // Píldora de visitas (cuenta los giros/visitas del wheel).
+  const visitsPill = document.getElementById("visits-pill");
+  if (visitsPill) {
+    const v = parseInt(localStorage.getItem("ecowheel-visits") || "0", 10) || 0;
+    visitsPill.hidden = false;
+    visitsPill.textContent = `👥 ${v} visita${v === 1 ? "" : "s"} al wheel registradas en este equipo`;
+  }
+  // URL LAN real para presentar en proyector/TV/PC de la misma red.
+  const lanUrlInput = document.getElementById("share-lan-url");
+  if (lanUrlInput && location.protocol.startsWith("http") && location.hostname && location.hostname !== "localhost") {
+    lanUrlInput.value = `${location.protocol}//${location.hostname}${location.port ? ":" + location.port : ""}`;
+  }
+
   renderList();
 
   window.addEventListener("storage", (event) => {

@@ -14,9 +14,10 @@
 
 /* ---------- Tema NOCHE (Titanio Negro) ---------- */
 .theme-night{
-  --bg-0:#040405;
-  --bg-1:#0a0b0d;
-  --bg-2:#131418;
+  /* iPhone 18 Pro negro: fondo negro profundo con micro-matices */
+  --bg-0:#000000;
+  --bg-1:#050506;
+  --bg-2:#0e0e10;
   --surface: rgba(255,255,255,.055);
   --surface-strong: rgba(255,255,255,.09);
   --border: rgba(255,255,255,.14);
@@ -34,9 +35,10 @@
 
 /* ---------- Tema DÍA (Titanio Plata) ---------- */
 .theme-day{
-  --bg-0:#eef0f2;
-  --bg-1:#e2e4e8;
-  --bg-2:#d4d7dc;
+  /* iPhone 18 Pro plata: fondo plata brillante neutro */
+  --bg-0:#f5f5f7;
+  --bg-1:#e8e9ed;
+  --bg-2:#d9dadd;
   --surface: rgba(255,255,255,.5);
   --surface-strong: rgba(255,255,255,.72);
   --border: rgba(60,64,72,.14);
@@ -289,25 +291,35 @@ textarea{
 .spin-letter-image{
   position:relative;
   z-index:2;
-  width:56%;
-  height:56%;
+  width:62%;
+  height:62%;
   object-fit:contain;
   object-position:center;
-  border-radius:50%;
-  mix-blend-mode:screen;
-  overflow:visible;
+  background:transparent;
+  border-radius:0;
+  mix-blend-mode:normal;
   pointer-events:none;
-  filter:brightness(1.15) drop-shadow(0 0 6px rgba(56,228,242,.75)) drop-shadow(0 0 14px rgba(124,244,255,.35)) drop-shadow(0 0 28px rgba(56,228,242,.25));
-  animation:helium-bubble 3.8s ease-in-out infinite;
+  overflow:visible;
+  filter:
+    drop-shadow(0 0 2px rgba(255,255,255,.95))
+    drop-shadow(0 0 8px rgba(124,244,255,.9))
+    drop-shadow(0 0 18px rgba(56,228,242,.65))
+    drop-shadow(0 0 42px rgba(56,228,242,.35));
+  animation:helium-logo-float 3.8s ease-in-out infinite;
+  will-change:transform,filter;
   user-select:none;
 }
 .theme-day .spin-letter-image{
   mix-blend-mode:normal;
-  filter:brightness(.92) saturate(1.05) drop-shadow(0 0 5px rgba(31,167,201,.6)) drop-shadow(0 0 12px rgba(47,111,237,.3));
+  filter:
+    drop-shadow(0 0 1px rgba(255,255,255,.9))
+    drop-shadow(0 0 7px rgba(31,167,201,.8))
+    drop-shadow(0 0 16px rgba(47,111,237,.45))
+    drop-shadow(0 0 34px rgba(47,111,237,.28));
 }
-@keyframes helium-bubble{
+@keyframes helium-logo-float{
   0%,100%{ transform:translateY(0) scale(1); }
-  50%{ transform:translateY(-2px) scale(1.018); }
+  50%{ transform:translateY(-2px) scale(1.02); }
 }
 
 .spin-btn.charging .ring-jagged{
@@ -406,6 +418,7 @@ textarea{
 }
 
 .pill-glass-strong.result-card{
+  position:relative;
   width:fit-content;
   max-width:100%;
   height:auto;
@@ -439,6 +452,152 @@ textarea{
   background-repeat:no-repeat;
   image-rendering:high-quality;
   display:block;
+}
+
+/* Campo magnético B₀ + precesión (trompo) al tocar la imagen del resultado */
+.result-card.has-solution{ cursor:pointer; }
+.result-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:2px solid rgba(124,244,255,.55);
+  box-shadow: inset 0 0 22px rgba(56,228,242,.16), 0 0 0 1px rgba(124,244,255,.3);
+  pointer-events:none;
+  opacity:0;
+  transform:rotateX(68deg);
+  transform-origin:center;
+  transition:opacity .45s;
+  animation:mri-field-spin 2.6s linear infinite;
+}
+.result-card.has-solution::before{ opacity:.6; }
+@keyframes mri-field-spin{
+  from{ transform:rotateX(68deg) rotateZ(0deg); }
+  to{ transform:rotateX(68deg) rotateZ(360deg); }
+}
+@keyframes precess{
+  0%{ transform:perspective(1000px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);}
+  12%{ transform:perspective(1000px) rotateX(9deg) rotateY(-13deg) rotateZ(5deg) scale(1.02); box-shadow:0 0 46px rgba(56,228,242,.6), inset 0 0 26px rgba(56,228,242,.18);}
+  26%{ transform:perspective(1000px) rotateX(-7deg) rotateY(17deg) rotateZ(-4deg) scale(1.03); box-shadow:0 0 34px rgba(56,228,242,.5), inset 0 0 22px rgba(56,228,242,.15);}
+  40%{ transform:perspective(1000px) rotateX(10deg) rotateY(-8deg) rotateZ(6deg) scale(1.02); box-shadow:0 0 52px rgba(56,228,242,.7), inset 0 0 30px rgba(56,228,242,.22);}
+  54%{ transform:perspective(1000px) rotateX(-9deg) rotateY(12deg) rotateZ(-6deg) scale(1.03); box-shadow:0 0 38px rgba(56,228,242,.55), inset 0 0 24px rgba(56,228,242,.17);}
+  68%{ transform:perspective(1000px) rotateX(6deg) rotateY(-16deg) rotateZ(3deg) scale(1.02); box-shadow:0 0 46px rgba(56,228,242,.6), inset 0 0 26px rgba(56,228,242,.18);}
+  82%{ transform:perspective(1000px) rotateX(-5deg) rotateY(9deg) rotateZ(4deg) scale(1.01); box-shadow:0 0 30px rgba(56,228,242,.45), inset 0 0 20px rgba(56,228,242,.13);}
+  100%{ transform:perspective(1000px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);}
+}
+.result-card.is-precessing{
+  animation: helium-border 5s ease-in-out infinite, precess 1.5s var(--ease-liquid) both;
+}
+.result-card.is-precessing::before{
+  opacity:1;
+  animation-duration:.7s;
+  border-color:rgba(255,255,255,.85);
+  box-shadow:0 0 0 2px rgba(124,244,255,.65), inset 0 0 44px rgba(56,228,242,.4);
+}
+.solution-cue{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 13px;
+  border-radius:999px;
+  font-size:11.5px;
+  font-weight:700;
+  letter-spacing:.03em;
+  color:var(--text-0);
+  background:rgba(4,6,8,.62);
+  border:1px solid var(--helio-a);
+  box-shadow:0 0 14px rgba(56,228,242,.4);
+  pointer-events:none;
+  z-index:3;
+  white-space:nowrap;
+  animation:cue-pulse 2s ease-in-out infinite;
+}
+@keyframes cue-pulse{
+  50%{ box-shadow:0 0 26px rgba(56,228,242,.75); }
+}
+/* Visor de solución en PDF (modal) */
+.solution-overlay{
+  position:fixed;
+  inset:0;
+  z-index:60;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.solution-overlay[hidden]{ display:none !important; }
+.solution-backdrop{
+  position:absolute;
+  inset:0;
+  cursor:pointer;
+  background:rgba(2,3,5,.78);
+  backdrop-filter:blur(10px) saturate(120%);
+  -webkit-backdrop-filter:blur(10px) saturate(120%);
+}
+.solution-panel{
+  position:relative;
+  z-index:1;
+  width:min(94vw, 960px);
+  height:min(88vh, 720px);
+  display:flex;
+  flex-direction:column;
+  background:
+    linear-gradient(var(--bg-0), var(--bg-0)) padding-box,
+    linear-gradient(125deg, var(--helio-a), var(--helio-c), var(--helio-b), var(--helio-a)) border-box;
+  background-size:100% 100%, 260% 260%;
+  border:1px solid transparent;
+  border-radius:18px;
+  box-shadow:0 0 30px rgba(56,228,242,.3), 0 24px 70px rgba(0,0,0,.55);
+  animation:solution-in var(--dur-med) var(--ease-liquid);
+}
+@keyframes solution-in{
+  from{ opacity:0; transform:translateY(28px) scale(.97); }
+  to{ opacity:1; transform:none; }
+}
+.solution-panel-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  background:rgba(4,6,8,.45);
+}
+.solution-title{ font-size:13px; font-weight:800; letter-spacing:.05em; color:var(--text-0); }
+.solution-panel-actions{ display:flex; align-items:center; gap:10px; margin-left:auto; }
+.solution-dl{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 14px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--text-0);
+  text-decoration:none;
+  cursor:pointer;
+  background:linear-gradient(120deg, var(--helio-a), #6a4fe0);
+}
+.solution-close{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:rgba(120,130,150,.1);
+  color:var(--text-0);
+  font-size:19px;
+  line-height:1;
+  cursor:pointer;
+}
+.solution-close:hover{ border-color:var(--helio-a); }
+#solution-frame{
+  flex:1;
+  min-height:0;
+  width:100%;
+  border:none;
+  background:rgba(4,6,8,.25);
 }
 
 .question-pill{

@@ -6,8 +6,8 @@
 <title>Configura tu EcoWheel — Panel de administración</title>
 <meta name="description" content="Sube las imágenes y preguntas que aparecerán en el wheel de Ecowheel." />
 <meta name="theme-color" content="#040405" />
-<link rel="stylesheet" href="style.css?v=20260913-16" />
-<link rel="stylesheet" href="admin.css?v=20260913-6" />
+<link rel="stylesheet" href="style.css?v=20260914-v4" />
+<link rel="stylesheet" href="admin.css?v=20260914-10" />
 </head>
 <body class="theme-night admin-body">
 
@@ -22,6 +22,9 @@
         </svg>
       </a>
       <h1 class="admin-title">Configura tu EcoWheel</h1>
+      <button type="button" id="reset-all-btn" class="admin-reset" title="Reiniciar todo: borra contenido, imágenes, soluciones y la conexión de Drive… y vuelve a configurar desde cero" aria-label="Reiniciar todo el EcoWheel">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 19 L19 5"/></svg>
+      </button>
     </header>
 
     <div class="admin-grid">
@@ -29,75 +32,83 @@
       <!-- Columna izquierda: formulario -->
       <section class="admin-card">
         <form id="round-form">
-          <label class="field-label" for="question-input">Pregunta que va a aparecer</label>
-          <input
+          <label class="field-label" for="question-input">Pregunta(s) del wheel</label>
+          <textarea
             id="question-input"
-            class="field-input"
-            type="text"
-            placeholder="Ej: ¿Qué es un spin?"
+            class="field-input field-textarea questions-area"
+            rows="4"
+            placeholder="Escribe 1 pregunta… o pega la lista: 1. Primera pregunta  2. Segunda pregunta"
             autocomplete="off"
-          />
+          ></textarea>
+          <p class="inline-help">Si pegas lista numerada (<strong>1. … 2. …</strong>) cada número se empareja con la imagen del mismo número (<strong>1.jpg, 2.png…</strong>). Si es una sola pregunta, se usa la primera imagen.</p>
 
-          <label class="field-label" for="dropzone">Imágenes del wheel</label>
-          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Subir imágenes">
+          <label class="field-label" for="dropzone">Imágenes del wheel (equipo o Drive)</label>
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Subir imágenes: clic o arrastrar">
             <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
             <div class="dropzone-icon">
               <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3l5 5h-3v6h-4V8H7l5-5Zm-7 14h14v2H5v-2Z"/></svg>
             </div>
-            <p class="dropzone-title">Arrastra tu imagen aquí o explora archivos</p>
-            <p class="dropzone-hint">Soporta PNG, JPG, WEBP para helio líquido · Máx 8 archivos</p>
+            <p class="dropzone-title">Arrastra tus imágenes aquí o explora archivos</p>
+            <p class="dropzone-hint">PNG · JPG · WEBP · Máx 250 · Se previsualizan abajo automáticamente</p>
+            <p id="file-count" class="bulk-file-count" aria-live="polite" hidden></p>
           </div>
-          <div id="thumb-strip" class="thumb-strip" hidden></div>
+          <div id="thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
 
-          <label class="field-label" for="info-input">Respuesta / info adicional <span class="field-optional">(opcional)</span></label>
-          <textarea
-            id="info-input"
-            class="field-input field-textarea"
-            placeholder="Explica qué verán al tocar 'Aprender más'…"
-            rows="3"
-          ></textarea>
+          <label class="field-label">Solución de la pregunta</label>
+          <div class="seg" id="solution-mode" role="radiogroup" aria-label="Elegir cómo cargar la solución">
+            <button type="button" class="seg-btn" data-mode="write" id="mode-write">✍️ Redactar</button>
+            <button type="button" class="seg-btn is-active" data-mode="pdf" id="mode-pdf">📄 Cargar PDF</button>
+          </div>
+
+          <div id="block-write" hidden>
+            <label class="field-label" for="info-input">Solución escrita <span class="field-optional">(texto)</span></label>
+            <textarea
+              id="info-input"
+              class="field-input field-textarea"
+              placeholder="Escribe aquí la solución que verán al tocar 'Aprender más'…"
+              rows="3"
+            ></textarea>
+            <p class="inline-help">Modo <strong>Redactar</strong>: escribes la solución como texto y se muestra con «Aprender más».</p>
+          </div>
+
+          <div id="block-pdf">
+            <label class="field-label" for="pdf-dropzone">Soluciones en PDF <span class="field-optional">(numeradas)</span></label>
+            <div id="pdf-dropzone" class="dropzone dropzone--pdf" tabindex="0" role="button" aria-label="Subir PDF de soluciones: clic o arrastrar">
+              <input id="pdf-input" type="file" accept="application/pdf,.pdf" multiple hidden />
+              <div class="dropzone-icon">📄</div>
+              <p class="dropzone-title">Arrastra los PDF de solución o explora archivos</p>
+              <p class="dropzone-hint">PDF · Numerados igual que imágenes y preguntas: 1.solucion.pdf, 2.…</p>
+              <p id="pdf-count" class="bulk-file-count" aria-live="polite" hidden></p>
+            </div>
+            <div id="pdf-strip" class="thumb-strip pdf-strip" hidden></div>
+            <p class="inline-help">El número al inicio del nombre del PDF (<strong>1.solucion.pdf, 2.…</strong>) lo conecta con la pregunta e imagen del mismo número. En el wheel, al <strong>tocar la imagen</strong> del resultado se activa la precesión y se abre esa solución.</p>
+          </div>
 
           <button type="submit" id="save-btn" class="save-btn">
             <span aria-hidden="true">✨</span> Guardar en EcoWheel
           </button>
           <button type="button" id="cancel-edit-btn" class="cancel-edit-btn" hidden>Cancelar edición</button>
+          <p id="form-status" class="bulk-status" role="status" aria-live="polite"></p>
         </form>
 
-        <section class="bulk-import" aria-labelledby="bulk-title">
-          <h2 id="bulk-title" class="bulk-title">Carga masiva numerada</h2>
-          <p class="bulk-help">Pega preguntas como <strong>1. Pregunta</strong>, <strong>2. Pregunta</strong> y selecciona imágenes con el mismo número en el nombre: <strong>1.jpg</strong>, <strong>2.png</strong>.</p>
-          <label class="field-label" for="bulk-questions">Preguntas numeradas</label>
-          <textarea id="bulk-questions" class="field-input field-textarea bulk-questions" rows="7" placeholder="1. Primera pregunta\n2. Segunda pregunta\n3. Tercera pregunta"></textarea>
-          <label class="field-label" for="bulk-dropzone">Imágenes numeradas (máximo 250)</label>
-          <div id="bulk-dropzone" class="dropzone bulk-dropzone" tabindex="0" role="button" aria-label="Subir imágenes numeradas: clic o arrastrar y soltar">
-            <input id="bulk-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
-            <div class="dropzone-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3l5 5h-3v6h-4V8H7l5-5Zm-7 14h14v2H5v-2Z"/></svg>
-            </div>
-            <p class="dropzone-title">Arrastra tus imágenes numeradas aquí o explora archivos</p>
-            <p class="dropzone-hint">Nómbralas igual que la pregunta: <strong>1.jpg</strong>, <strong>2.png</strong> … Máx 250</p>
-            <p id="bulk-file-count" class="bulk-file-count" aria-live="polite" hidden></p>
-          </div>
-          <div id="bulk-thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
-          <button type="button" id="bulk-import-btn" class="save-btn bulk-import-btn">Cargar lote en EcoWheel</button>
-          <p id="bulk-status" class="bulk-status" role="status" aria-live="polite"></p>
-        </section>
-
-        <section class="bulk-import drive-import" aria-labelledby="drive-title">
-          <h2 id="drive-title" class="bulk-title">Importar desde Google Drive</h2>
+        <details class="drive-fold" id="drive-fold">
+          <summary class="drive-fold-summary"><span>Importar desde Google Drive</span><span class="drive-fold-hint">Carpeta pública o privada</span></summary>
+          <div class="drive-fold-body">
           <p class="bulk-help">Pega el enlace de una <strong>carpeta pública de Drive</strong> (Cualquiera con el enlace puede ver). Las imágenes se emparejan por el número al inicio del nombre: <strong>1.imagenrm.jpg</strong>, <strong>2.cualquier-nombre.png</strong>. Solo se pide autorización de Google si la carpeta es privada.</p>
           <label class="field-label" for="drive-link-input">Enlace de carpeta Drive</label>
           <input id="drive-link-input" class="field-input" type="url" inputmode="url" placeholder="https://drive.google.com/drive/folders/ABC123…" autocomplete="off" />
+          <label class="check-row"><input id="drive-save-link" type="checkbox" checked /> Guardar este enlace como predeterminado (se vuelve a conectar solo cada vez)</label>
           <label class="field-label" for="drive-api-key">Clave API de Google (opcional, solo carpetas privadas)</label>
           <input id="drive-api-key" class="field-input" type="password" placeholder="AIza… (se guarda solo en este navegador)" autocomplete="off" />
           <div class="drive-actions">
             <button type="button" id="drive-auth-btn" class="ghost-btn">Autorizar con Google</button>
             <button type="button" id="drive-import-btn" class="save-btn bulk-import-btn">Traer imágenes de Drive</button>
           </div>
+          <div id="drive-thumb-strip" class="thumb-strip thumb-strip--contain" hidden aria-label="Vista previa de imágenes de Drive"></div>
           <p id="drive-auth-status" class="bulk-status" role="status" aria-live="polite"></p>
-          <div id="drive-thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
           <p id="drive-status" class="bulk-status" role="status" aria-live="polite"></p>
-        </section>
+          </div>
+        </details>
       </section>
 
       <!-- Columna derecha: lista -->
@@ -110,12 +121,28 @@
           </div>
           <div id="list-items" class="list-items"></div>
           <p class="list-footer" id="list-footer">✓ 0 preguntas activas en el EcoWheel · Sincronización líquida</p>
+          <p id="visits-pill" class="visits-pill" hidden></p>
+        </div>
+
+        <div class="list-card share-card">
+          <div class="list-head">
+            <span class="list-title">Compartir / presentar el wheel</span>
+            <span class="list-count">WiFi · TV · proyector</span>
+          </div>
+          <p class="bulk-help share-help">Abre la pantalla del wheel desde cualquier equipo de tu red (proyector, TV o PC) o desde tu celular con estos enlaces:</p>
+          <div class="share-urls">
+            <label class="field-label">Enlace público (internet · iPhone / PC)</label>
+            <input id="share-public-url" class="field-input share-field" type="text" readonly value="https://frandev24.github.io/HEW_ECOWHEEL/" />
+            <label class="field-label">Enlace en tu red local (proyector / TV / PC)</label>
+            <input id="share-lan-url" class="field-input share-field" type="text" readonly value="http://localhost:8080" />
+          </div>
+          <p id="share-note" class="bulk-help share-help">Con el celular en el mismo WiFi usa el enlace local; fuera de casa usa el enlace público. Para presentar por Bluetooth en TV/proyector usa <strong>AirPlay / Miracast / pantalla inalámbrica</strong> del propio equipo y abre esta página.</p>
         </div>
 
       </section>
     </div>
   </main>
 
-  <script src="admin.js?v=20260913-8"></script>
+  <script src="admin.js?v=20260914-14"></script>
 </body>
 </html>

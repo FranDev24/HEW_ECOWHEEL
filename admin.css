@@ -285,6 +285,60 @@
   width:64px; height:64px;
 }
 
+/* ---------- Soluciones en PDF ---------- */
+.dropzone--pdf .dropzone-icon{ font-size:18px; }
+.pdf-strip{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-height:0;
+  max-height:220px;
+  overflow-y:auto;
+  margin-top:10px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background: rgba(120,130,150,.05);
+}
+.pdf-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:7px 10px;
+  border-radius:9px;
+  background: rgba(120,130,150,.06);
+  border:1px solid var(--border);
+}
+.pdf-badge{
+  flex:0 0 auto;
+  padding:2px 8px;
+  border-radius:6px;
+  background: linear-gradient(120deg, var(--helio-a), #6a4fe0);
+  color:#04121a;
+  font-size:10.5px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.pdf-name{
+  flex:1;
+  min-width:0;
+  font-size:12.5px;
+  color: var(--text-0);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.list-item-sol{
+  padding:1px 7px;
+  border-radius:6px;
+  background: rgba(56,228,242,.14);
+  border:1px solid rgba(56,228,242,.4);
+  color: var(--text-0);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+
 /* ---------- Lista del wheel: anatomía intacta ---------- */
 .list-item-thumb img{
   width:100%; height:100%;
@@ -295,6 +349,34 @@
 }
 
 /* ---------- Importar desde Drive ---------- */
+.drive-fold{
+  margin:22px 0 0;
+  border-top:1px dashed var(--border);
+  padding-top:10px;
+}
+.drive-fold-summary{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:8px;
+  width:100%;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:.01em;
+  color: var(--text-0);
+  padding:10px 14px;
+  border-radius:12px;
+  background: rgba(120,130,150,.06);
+  border:1px solid var(--border);
+  transition: border-color .2s, background .2s;
+}
+.drive-fold-summary:hover{ border-color: var(--helio-a); background: rgba(56,228,242,.05); }
+.drive-fold-summary::-webkit-details-marker{ display:none; }
+.drive-fold-hint{ font-size:11.5px; color: var(--text-1); opacity:.85; }
+.drive-fold-body{ padding:4px 4px 0; }
+.drive-fold-body .bulk-help{ margin:0 0 10px; font-size:12.5px; color: var(--text-1); line-height:1.5; }
+#drive-thumb-strip{ margin-top:10px; }
 .drive-import{ margin-top:18px; }
 .drive-actions{
   display:flex; gap:10px; flex-wrap:wrap; align-items:center;
