@@ -6,46 +6,86 @@
 (() => {
   "use strict";
 
-  /* ---------------------------------------------------------
-     THEME (Día = Plata iPhone 18 Pro / Noche = Negro espacial)
-  --------------------------------------------------------- */
-  const body = document.body;
-  const themeBtn = document.getElementById("theme-btn");
-  const themeIcon = document.getElementById("theme-icon");
+  /* ================= helpers ================= */
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
 
-  const SUN =
-    'M12 3a9 9 0 1 0 9 9c0-.35-.02-.7-.05-1.04A7 7 0 0 1 12 3Z';
-  const SUN_FULL =
-    'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-15v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7';
+  // Acepta #rgb, #rrggbb o rgb()/rgba() y devuelve [r,g,b]
+  function toRGB(color, fallback = [56, 228, 242]) {
+    if (!color) return fallback;
+    const s = String(color).trim();
+    let m = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      let h = m[1];
+      if (h.length === 3) h = [...h].map((c) => c + c).join("");
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+    m = s.match(/rgba?\s*\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+    if (m) return [+m[1], +m[2], +m[3]];
+    return fallback;
+  }
+  const rgba = (rgb, a) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+
+  /* ================= theme ================= */
+  const body = document.body;
+  const themeBtn = $("theme-btn");
+  const themeIcon = $("theme-icon");
+  const SUN = "M12 3a9 9 0 1 0 9 9c0-.35-.02-.7-.05-1.04A7 7 0 0 1 12 3Z";
+  const SUN_FULL = "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-15v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7";
+
+  let helioCache = null;
+  const readHelio = () => {
+    const cs = getComputedStyle(body);
+    const a = toRGB(cs.getPropertyValue("--helio-a"), [56, 228, 242]);
+    const b = toRGB(cs.getPropertyValue("--helio-b"), [124, 244, 255]);
+    const c = toRGB(cs.getPropertyValue("--helio-c"), [28, 107, 216]);
+    return { a, b, c, white: [255, 255, 255] };
+  };
+  const helio = () => helioCache || (helioCache = readHelio());
 
   function applyTheme(theme) {
     body.classList.toggle("theme-night", theme === "night");
     body.classList.toggle("theme-day", theme === "day");
-    themeIcon.innerHTML =
-      theme === "day"
-        ? `<path d="${SUN_FULL}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
-        : `<path d="${SUN}" fill="currentColor"/>`;
-    localStorage.setItem("ecowheel-theme", theme);
+    themeIcon.innerHTML = theme === "day"
+      ? `<path d="${SUN_FULL}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
+      : `<path d="${SUN}" fill="currentColor"/>`;
+    try { localStorage.setItem("ecowheel-theme", theme); } catch { /* privado */ }
+    helioCache = null;
   }
 
-  let currentTheme =
-    localStorage.getItem("ecowheel-theme") ||
-    (typeof ECOWHEEL_DEFAULT_THEME !== "undefined" ? ECOWHEEL_DEFAULT_THEME : "night");
+  let currentTheme = "night";
+  try {
+    currentTheme = localStorage.getItem("ecowheel-theme") ||
+      (typeof ECOWHEEL_DEFAULT_THEME !== "undefined" ? ECOWHEEL_DEFAULT_THEME : "night");
+  } catch { /* noop */ }
   applyTheme(currentTheme);
-
   themeBtn.addEventListener("click", () => {
     currentTheme = currentTheme === "night" ? "day" : "night";
     applyTheme(currentTheme);
-    helioColors = null;
   });
 
-  /* ---------------------------------------------------------
-     BACK BUTTON
-  --------------------------------------------------------- */
-  const backBtn = document.getElementById("back-btn");
-  const screenSpin = document.getElementById("screen-spin");
-  const screenResult = document.getElementById("screen-result");
+  /* ================= screens / nav ================= */
+  const backBtn = $("back-btn");
+  const screenSpin = $("screen-spin");
+  const screenResult = $("screen-result");
+  const spinBtn = $("spin-btn");
+  const hintText = $("hint-text");
+  const resultImage = $("result-image");
+  const questionText = $("question-text");
+  const learnMoreBtn = $("learn-more-btn");
+  const learnMoreInfo = $("learn-more-info");
 
+  let spinning = false;
+  function resetSpinButton() {
+    spinning = false;
+    spinBtn.classList.remove("charging");
+    spinBtn.setAttribute("aria-busy", "false");
+    anim.mode = "idle";
+    hintText.style.opacity = "1";
+    hintText.classList.remove("is-loading");
+    hintText.textContent = "Toca el núcleo para iniciar el giro";
+  }
   backBtn.addEventListener("click", () => {
     if (!screenResult.hidden) {
       screenResult.hidden = true;
@@ -56,232 +96,226 @@
     }
   });
 
-  /* ---------------------------------------------------------
-     ANILLO LÍQUIDO (blob irregular tipo helio-morfismo)
-  --------------------------------------------------------- */
-  const ringPath = document.getElementById("ring-jagged");
-  const spinBtn = document.getElementById("spin-btn");
-
-  const RING_POINTS = 22;
+  /* ================= anillo líquido ================= */
+  // BUG FIX: antes se alternaba dpr global entre canvas y se usaba coords del
+  // botón para el canvas (escalas distintas). Ahora cada canvas tiene su dpr.
+  const ringPath = $("ring-jagged");
+  const RING_N = 26;
   const RING_R = 72;
-  const RING_CENTER = 100;
-  const ringNoiseOffsets = Array.from({ length: RING_POINTS }, () => Math.random() * 1000);
-  let ringAmplitude = 5.5; // idle wobble
-  let ringSpeed = 0.35;
+  const RING_C = 100;
+  const ringSeed = Array.from({ length: RING_N }, () => Math.random() * 1000);
+
+  const anim = { mode: "idle", start: 0, t: 0, amp: 5.5, speed: 0.35 };
 
   function noise1D(x) {
-    // pseudo-noise suave (suma de senos) — sin dependencias externas
-    return (
-      Math.sin(x) * 0.6 +
-      Math.sin(x * 2.13 + 1.7) * 0.3 +
-      Math.sin(x * 4.07 + 3.1) * 0.15
-    );
+    return Math.sin(x) * 0.6 + Math.sin(x * 2.13 + 1.7) * 0.3 + Math.sin(x * 4.07 + 3.1) * 0.15;
   }
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
   function drawRing(t) {
-    const points = [];
-    for (let i = 0; i < RING_POINTS; i++) {
-      const angle = (i / RING_POINTS) * Math.PI * 2;
-      const n = noise1D(ringNoiseOffsets[i % RING_POINTS] + t * ringSpeed);
-      const r = RING_R + n * ringAmplitude;
-      const x = RING_CENTER + Math.cos(angle) * r;
-      const y = RING_CENTER + Math.sin(angle) * r;
-      points.push({ x, y });
+    const pts = [];
+    for (let i = 0; i < RING_N; i++) {
+      const ang = (i / RING_N) * Math.PI * 2;
+      // doble onda: respiración lenta + rizo rápido = superficie criogénica
+      const n = noise1D(ringSeed[i] + t * anim.speed) * 0.75
+        + noise1D(ringSeed[i] * 1.7 + t * anim.speed * 2.3) * 0.25;
+      const r = RING_R + n * anim.amp;
+      pts.push({ x: RING_C + Math.cos(ang) * r, y: RING_C + Math.sin(ang) * r });
     }
-
-    const firstMidpoint = midpoint(points[0], points[1]);
-    let d = `M${firstMidpoint.x.toFixed(2)},${firstMidpoint.y.toFixed(2)} `;
-    for (let i = 1; i <= RING_POINTS; i++) {
-      const point = points[i % RING_POINTS];
-      const nextPoint = points[(i + 1) % RING_POINTS];
-      const nextMidpoint = midpoint(point, nextPoint);
-      d += `Q${point.x.toFixed(2)},${point.y.toFixed(2)} ${nextMidpoint.x.toFixed(2)},${nextMidpoint.y.toFixed(2)} `;
+    let d = "";
+    const m0 = mid(pts[0], pts[1]);
+    d = `M${m0.x.toFixed(2)},${m0.y.toFixed(2)} `;
+    for (let i = 1; i <= RING_N; i++) {
+      const p = pts[i % RING_N];
+      const m = mid(p, pts[(i + 1) % RING_N]);
+      d += `Q${p.x.toFixed(2)},${p.y.toFixed(2)} ${m.x.toFixed(2)},${m.y.toFixed(2)} `;
     }
-    d += "Z";
-    ringPath.setAttribute("d", d);
+    ringPath.setAttribute("d", d + "Z");
   }
 
-  function midpoint(firstPoint, secondPoint) {
-    return {
-      x: (firstPoint.x + secondPoint.x) / 2,
-      y: (firstPoint.y + secondPoint.y) / 2,
-    };
-  }
-
-  /* ---------------------------------------------------------
-     PARTÍCULAS DE HELIO LÍQUIDO (canvas, additive glow)
-  --------------------------------------------------------- */
-  const canvas = document.getElementById("particle-canvas");
+  /* ================= partículas helio (más fluido, burbujas) ================= */
+  const canvas = $("particle-canvas");
   const ctx = canvas.getContext("2d");
-  let cw = 0, ch = 0, cx = 0, cy = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let cw = 0, ch = 0, cx = 0, cy = 0, dprP = 1;
 
-  function resizeCanvas() {
+  function resizeParticles() {
     const rect = canvas.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 3);
-    cw = rect.width; ch = rect.height;
-    canvas.width = Math.max(1, Math.ceil(cw * dpr));
-    canvas.height = Math.max(1, Math.ceil(ch * dpr));
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dprP = Math.min(window.devicePixelRatio || 1, 2);
+    cw = Math.max(1, rect.width); ch = Math.max(1, rect.height);
+    canvas.width = Math.ceil(cw * dprP);
+    canvas.height = Math.ceil(ch * dprP);
+    ctx.setTransform(dprP, 0, 0, dprP, 0, 0);
     cx = cw / 2; cy = ch / 2;
+    // BUG FIX: radio relativo al canvas real, no al botón.
+    const base = Math.min(cw, ch);
+    for (const p of particles) p.baseRadius = base * (0.20 + p.orbit * 0.22);
   }
-
-  const BASE_RADIUS = () => Math.min(cw, ch) * 0.29; // radio del núcleo (botón)
+  // radio del núcleo (solo referencia visual): % del canvas
+  const coreRadius = () => Math.min(cw, ch) * 0.20;
 
   class Particle {
-    constructor() { this.reset(true); }
+    constructor(i) {
+      this.orbit = Math.random();       // 0 centro → 1 borde
+      this.depth = 0.35 + Math.random() * 0.65; // paralaje: lejos=pequeño/lento
+      this.reset(true);
+      this.angle = Math.random() * Math.PI * 2;
+    }
     reset(spread) {
-      const a = Math.random() * Math.PI * 2;
-      const r = BASE_RADIUS() * (spread ? (0.55 + Math.random() * 0.9) : 1.0);
-      this.angle = a;
-      this.radius = r;
-      this.baseRadius = r;
-      this.speed = (0.15 + Math.random() * 0.35) * (Math.random() < 0.5 ? 1 : -1);
-      this.size = 0.8 + Math.random() * 2.1;
+      this.angle = Math.random() * Math.PI * 2;
+      const base = Math.min(cw || 300, ch || 300);
+      this.baseRadius = base * (spread ? (0.18 + this.orbit * 0.42) : 0.22);
+      this.radius = this.baseRadius;
+      this.speed = (0.12 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
+      this.size = (0.7 + Math.random() * 2.0) * this.depth;
       this.hueMix = Math.random();
       this.wob = Math.random() * Math.PI * 2;
+      this.wobSpeed = 1.2 + Math.random() * 2.2;
       this.life = 1;
-      this.burstVX = 0;
+      this.burstV = 0;
+      this.tw = Math.random() * Math.PI * 2; // parpadeo
     }
   }
 
-  const PARTICLE_COUNT = 90;
-  let particles = Array.from({ length: PARTICLE_COUNT }, () => new Particle());
+  const isMobile = matchMedia("(max-width: 700px)").matches;
+  const PARTICLE_COUNT = reducedMotion ? 0 : (isMobile ? 64 : 110);
+  const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => new Particle(i));
 
-  // Interacción puntero (mouse / touch) — atrae/perturba las partículas
+  // BUG FIX: puntero medido en coords del CANVAS (no del botón).
   const pointer = { x: null, y: null, active: false };
-
-  function setPointerFromEvent(e) {
-    const rect = canvas.getBoundingClientRect();
+  function setPointer(e) {
+    const r = canvas.getBoundingClientRect();
     const p = e.touches ? e.touches[0] : e;
-    pointer.x = p.clientX - rect.left;
-    pointer.y = p.clientY - rect.top;
+    pointer.x = p.clientX - r.left;
+    pointer.y = p.clientY - r.top;
+  }
+  for (const ev of ["pointermove", "pointerenter", "pointerdown"]) {
+    canvas.addEventListener(ev, (e) => { setPointer(e); pointer.active = true; }, { passive: true });
+    spinBtn.addEventListener(ev, (e) => { setPointer(e); pointer.active = true; }, { passive: true });
+  }
+  for (const ev of ["pointerleave", "pointerup", "pointercancel"]) {
+    spinBtn.addEventListener(ev, () => { pointer.active = false; }, { passive: true });
+    canvas.addEventListener(ev, () => { pointer.active = false; }, { passive: true });
   }
 
-  spinBtn.addEventListener("pointermove", (e) => {
-    setPointerFromEvent(e);
-    pointer.active = true;
-  }, { passive: true });
-  spinBtn.addEventListener("pointerenter", (e) => {
-    setPointerFromEvent(e);
-    pointer.active = true;
-  }, { passive: true });
-  ["pointerleave", "pointerup", "pointercancel"].forEach((eventName) => {
-    spinBtn.addEventListener(eventName, () => { pointer.active = false; }, { passive: true });
-  });
-
-  let helioColors = null;
-
-  function readHelioColors() {
-    const styles = getComputedStyle(body);
-    return {
-      a: styles.getPropertyValue("--helio-a").trim() || "#38e4f2",
-      b: styles.getPropertyValue("--helio-b").trim() || "#7cf4ff",
-      c: styles.getPropertyValue("--helio-c").trim() || "#1c6bd8",
-    };
+  // sprite pre-renderizado: evita 110 createRadialGradient por frame
+  const spriteCache = new Map();
+  function glowSprite(rgb) {
+    const key = rgb.join(",");
+    let s = spriteCache.get(key);
+    if (s) return s;
+    s = document.createElement("canvas");
+    s.width = s.height = 64;
+    const g = s.getContext("2d");
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, `rgba(255,255,255,.95)`);
+    grad.addColorStop(0.25, rgba(rgb, 0.85));
+    grad.addColorStop(0.6, rgba(rgb, 0.28));
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    spriteCache.set(key, s);
+    return s;
   }
-
-  function themeHelioColors() {
-    return helioColors || (helioColors = readHelioColors());
-  }
-
-  /* ---------------------------------------------------------
-     ESTADOS DE ANIMACIÓN: idle -> charging -> burst -> settle
-  --------------------------------------------------------- */
-  let mode = "idle"; // idle | charging | burst | settle
-  let modeStart = 0;
-  let globalT = 0;
 
   function updateParticles(dt) {
-    const colors = themeHelioColors();
     ctx.clearRect(0, 0, cw, ch);
+    if (!particles.length) return;
+    const C = helio();
     ctx.globalCompositeOperation = "lighter";
 
-    const speedMul = mode === "charging" ? 5.2 : mode === "burst" ? 1 : 1;
-    const pullToCenter = mode === "charging" ? 0.06 : 0;
+    const charging = anim.mode === "charging";
+    const bursting = anim.mode === "burst";
+    const speedMul = charging ? 5.2 : 1;
+    const pull = charging ? 0.10 : 0;
 
     for (const p of particles) {
-      if (mode === "burst") {
-        // Explosión radial tipo "quench" de helio
-        p.radius += p.burstVX * dt * 60;
-        p.angle += p.speed * 0.01 * dt * 60;
+      if (bursting) {
+        p.radius += p.burstV * dt * 60;
+        p.angle += p.speed * 0.02 * dt * 60;
         p.life -= dt * 0.9;
         if (p.life < 0) p.life = 0;
       } else {
-        p.angle += p.speed * 0.01 * speedMul * dt * 60 * 0.06;
-        p.wob += dt * 2;
-        const wobble = Math.sin(p.wob) * 6;
-        const targetRadius = p.baseRadius * (1 - pullToCenter) + wobble;
-        p.radius += (targetRadius - p.radius) * 0.08;
+        p.angle += p.speed * speedMul * dt * 0.36 * p.depth;
+        p.wob += dt * p.wobSpeed;
+        p.tw += dt * 3;
+        const wobble = Math.sin(p.wob) * 6 * p.depth;
+        const target = p.baseRadius * (1 - pull) + wobble;
+        p.radius += (target - p.radius) * Math.min(1, dt * 5);
         p.life = 1;
       }
 
       let px = cx + Math.cos(p.angle) * p.radius;
       let py = cy + Math.sin(p.angle) * p.radius;
 
-      // atracción sutil hacia el puntero (interacción usuario)
-      if (pointer.active && pointer.x != null && mode !== "burst") {
+      if (pointer.active && pointer.x != null && !bursting) {
         const dx = pointer.x - px, dy = pointer.y - py;
         const dist = Math.hypot(dx, dy) || 1;
-        const force = Math.min(18 / dist, 0.9) * 10;
-        px += (dx / dist) * force * dt * 6;
-        py += (dy / dist) * force * dt * 6;
+        // repulsión suave tipo menisco líquido (no teletransporte)
+        const f = clamp(900 / (dist * dist), 0, 1.4) * dt * 22 * p.depth;
+        px -= (dx / dist) * f;
+        py -= (dy / dist) * f;
       }
 
-      const glow = ctx.createRadialGradient(px, py, 0, px, py, p.size * 5);
-      const col = p.hueMix > 0.66 ? colors.b : p.hueMix > 0.33 ? colors.a : colors.c;
-      glow.addColorStop(0, col);
-      glow.addColorStop(1, "transparent");
-      ctx.globalAlpha = 0.4 * p.life;
-      ctx.fillStyle = glow;
+      // burbuja de helio: núcleo blanco + halo de color + aro especular
+      const col = p.hueMix > 0.66 ? C.b : p.hueMix > 0.33 ? C.a : C.c;
+      const twinkle = 0.72 + 0.28 * Math.sin(p.tw);
+      const R = Math.max(2, p.size * 5 * (charging ? 1.5 : 1));
+      ctx.globalAlpha = clamp(0.5 * p.life * twinkle * (0.5 + p.depth * 0.5), 0, 1);
+      ctx.drawImage(glowSprite(col), px - R, py - R, R * 2, R * 2);
+      // micro-burbuja: punto denso que vende "líquido"
+      ctx.globalAlpha = clamp(0.55 * p.life * twinkle, 0, 1);
+      ctx.fillStyle = rgba(C.white, 1);
       ctx.beginPath();
-      ctx.arc(px, py, p.size * (mode === "charging" ? 1.6 : 1), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(0.5, p.size * 0.45), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
 
-    if (mode === "burst" && particles.every((p) => p.life <= 0)) {
-      mode = "settle";
+    if (bursting && particles.every((p) => p.life <= 0)) {
+      anim.mode = "settle";
       particles.forEach((p) => p.reset(true));
     }
   }
 
-  /* ---------------------------------------------------------
-     NIEBLA CRIOGÉNICA DE FONDO
-  --------------------------------------------------------- */
-  const fogCanvas = document.getElementById("fog-canvas");
+  /* ================= niebla criogénica ================= */
+  const fogCanvas = $("fog-canvas");
   const fctx = fogCanvas.getContext("2d");
   let fogBlobs = [];
-  let fogWidth = 0;
-  let fogHeight = 0;
+  let fogW = 0, fogH = 0, dprF = 1;
+
   function initFog() {
     const rect = fogCanvas.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 3);
-    fogWidth = rect.width;
-    fogHeight = rect.height;
-    fogCanvas.width = Math.max(1, Math.ceil(rect.width * dpr));
-    fogCanvas.height = Math.max(1, Math.ceil(rect.height * dpr));
-    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dprF = Math.min(window.devicePixelRatio || 1, 2);
+    fogW = Math.max(1, rect.width);
+    fogH = Math.max(1, rect.height);
+    fogCanvas.width = Math.ceil(fogW * dprF);
+    fogCanvas.height = Math.ceil(fogH * dprF);
+    fctx.setTransform(dprF, 0, 0, dprF, 0, 0);
+    // vapor frío: deriva lenta horizontal, apenas vertical
     fogBlobs = Array.from({ length: 6 }, () => ({
-      x: Math.random() * rect.width,
-      y: Math.random() * rect.height,
-      r: 120 + Math.random() * 180,
-      vx: (Math.random() - 0.5) * 6,
-      vy: (Math.random() - 0.5) * 6,
+      x: Math.random() * fogW,
+      y: Math.random() * fogH,
+      r: 130 + Math.random() * 190,
+      vx: (Math.random() - 0.5) * 7,
+      vy: (Math.random() - 0.5) * 2.5,
+      a: 0.10 + Math.random() * 0.10,
     }));
   }
   function drawFog(dt) {
-    fctx.clearRect(0, 0, fogWidth, fogHeight);
-    const colors = themeHelioColors();
+    fctx.clearRect(0, 0, fogW, fogH);
+    const C = helio();
     for (const b of fogBlobs) {
       b.x += b.vx * dt; b.y += b.vy * dt;
-      if (b.x < -b.r) b.x = fogWidth + b.r;
-      if (b.x > fogWidth + b.r) b.x = -b.r;
-      if (b.y < -b.r) b.y = fogHeight + b.r;
-      if (b.y > fogHeight + b.r) b.y = -b.r;
+      if (b.x < -b.r) b.x = fogW + b.r;
+      if (b.x > fogW + b.r) b.x = -b.r;
+      if (b.y < -b.r) b.y = fogH + b.r;
+      if (b.y > fogH + b.r) b.y = -b.r;
       const g = fctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-      g.addColorStop(0, colors.c + "22");
-      g.addColorStop(1, "transparent");
+      g.addColorStop(0, rgba(C.c, b.a));
+      g.addColorStop(0.55, rgba(C.a, b.a * 0.45));
+      g.addColorStop(1, "rgba(0,0,0,0)");
       fctx.fillStyle = g;
       fctx.beginPath();
       fctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -289,70 +323,56 @@
     }
   }
 
-  /* ---------------------------------------------------------
-     LOOP PRINCIPAL
-  --------------------------------------------------------- */
+  /* ================= loop ================= */
   let lastT = performance.now();
+  const BASE_AMP = 5.5, BASE_SPEED = 0.35;
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
   function loop(now) {
-    const dt = Math.min((now - lastT) / 1000, 0.05);
+    const dt = clamp((now - lastT) / 1000, 0.001, 0.05);
     lastT = now;
-
-    if (document.hidden) {
-      requestAnimationFrame(loop);
-      return;
+    if (!document.hidden) {
+      anim.t += dt;
+      const m = anim.mode;
+      if (m === "charging") {
+        // ebullición: sube rápido y se estabiliza (antes crecía sin cota por ms)
+        const k = easeOut(clamp((now - anim.start) / 1100, 0, 1));
+        anim.amp = lerp(BASE_AMP, 34, k);
+        anim.speed = lerp(BASE_SPEED, 5.2, k);
+      } else if (m === "burst") {
+        anim.amp = lerp(anim.amp, 46, Math.min(1, dt * 10));
+        anim.speed = lerp(anim.speed, 7, Math.min(1, dt * 10));
+      } else {
+        anim.amp += (BASE_AMP - anim.amp) * Math.min(1, dt * 3);
+        anim.speed += (BASE_SPEED - anim.speed) * Math.min(1, dt * 3);
+      }
+      drawRing(anim.t * 40);
+      updateParticles(dt);
+      drawFog(dt);
     }
-
-    globalT += dt;
-
-    if (mode === "charging") {
-      ringAmplitude = 5.5 + Math.min((now - modeStart) / 30, 34);
-      ringSpeed = 0.35 + Math.min((now - modeStart) / 400, 6);
-    } else if (mode !== "burst") {
-      ringAmplitude += (5.5 - ringAmplitude) * 0.05;
-      ringSpeed += (0.35 - ringSpeed) * 0.05;
-    }
-
-    drawRing(globalT * 40);
-    updateParticles(dt);
-    drawFog(dt);
-
     requestAnimationFrame(loop);
   }
 
-  /* ---------------------------------------------------------
-     SECUENCIA DE GIRO (juego de azar)
-  --------------------------------------------------------- */
-  const hintText = document.getElementById("hint-text");
-  const resultImage = document.getElementById("result-image");
-  const questionText = document.getElementById("question-text");
-  const learnMoreBtn = document.getElementById("learn-more-btn");
-  const learnMoreInfo = document.getElementById("learn-more-info");
-
-  let spinning = false;
+  /* ================= rondas / giro ================= */
   let roundPool = [];
   let roundPoolSignature = "";
   let lastQuestionKey = "";
-
-  function resetSpinButton() {
-    spinBtn.classList.remove("charging");
-    spinBtn.setAttribute("aria-busy", "false");
-    mode = "idle";
-    hintText.style.opacity = "1";
-    hintText.classList.remove("is-loading");
-    hintText.textContent = "Toca el núcleo para iniciar el giro";
-    spinning = false;
-  }
+  let spinTimers = [];
 
   const IMAGE_DB_NAME = "ecowheel-images";
   const IMAGE_STORE_NAME = "images";
+  let imageDbPromise = null;
 
   function openImageDb() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(IMAGE_DB_NAME, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(IMAGE_STORE_NAME);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    if (!imageDbPromise) {
+      imageDbPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(IMAGE_DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IMAGE_STORE_NAME);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    return imageDbPromise;
   }
 
   async function resolveImage(imageId) {
@@ -360,16 +380,17 @@
     try {
       const db = await openImageDb();
       const blob = await new Promise((resolve, reject) => {
-        const request = db.transaction(IMAGE_STORE_NAME).objectStore(IMAGE_STORE_NAME).get(imageId);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        const req = db.transaction(IMAGE_STORE_NAME).objectStore(IMAGE_STORE_NAME).get(imageId);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
       });
-      db.close();
       return blob ? URL.createObjectURL(blob) : "";
     } catch {
       return "";
     }
   }
+
+  const keyOf = (r) => String(r?.question || "").trim().toLocaleLowerCase();
 
   async function pickRound() {
     const stored = loadStoredRounds();
@@ -384,43 +405,36 @@
       roundPoolSignature = signature;
     }
 
-    if (roundPool.length > 1 && lastQuestionKey) {
-      const nextQuestionKey = roundPool[roundPool.length - 1].question.trim().toLocaleLowerCase();
-      if (nextQuestionKey === lastQuestionKey) {
-        const alternativeIndex = roundPool.findIndex((round) => (
-          round.question.trim().toLocaleLowerCase() !== lastQuestionKey
-        ));
-        [roundPool[roundPool.length - 1], roundPool[alternativeIndex]] = [
-          roundPool[alternativeIndex],
-          roundPool[roundPool.length - 1],
-        ];
-      }
+    const tail = roundPool[roundPool.length - 1];
+    if (roundPool.length > 1 && lastQuestionKey && keyOf(tail) === lastQuestionKey) {
+      const alt = roundPool.findIndex((r) => keyOf(r) !== lastQuestionKey);
+      if (alt > -1) [roundPool[roundPool.length - 1], roundPool[alt]] = [roundPool[alt], roundPool[roundPool.length - 1]];
     }
 
     const round = roundPool.pop();
-    lastQuestionKey = round.question.trim().toLocaleLowerCase();
-    if (round.imageId) round.image = await resolveImage(round.imageId);
+    lastQuestionKey = keyOf(round);
+    if (round.imageId) round.image = (await resolveImage(round.imageId)) || round.image || "";
     return round;
   }
 
-  function uniqueRounds(rounds) {
-    const seenQuestions = new Set();
-    return rounds.filter((round) => {
-      const questionKey = (round.question || "").trim().toLocaleLowerCase();
-      if (!questionKey || seenQuestions.has(questionKey)) return false;
-      seenQuestions.add(questionKey);
+  const uniqueRounds = (rounds) => {
+    const seen = new Set();
+    return rounds.filter((r) => {
+      const k = keyOf(r);
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
       return true;
     });
-  }
+  };
 
-  function shuffleRounds(rounds) {
-    const shuffled = [...rounds];
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
-      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  const shuffleRounds = (rounds) => {
+    const s = [...rounds];
+    for (let i = s.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [s[i], s[j]] = [s[j], s[i]];
     }
-    return shuffled;
-  }
+    return s;
+  };
 
   function loadStoredRounds() {
     try {
@@ -439,48 +453,34 @@
     }
   }
 
-  function startSpin() {
-    if (spinning) return;
-    spinning = true;
-    spinBtn.classList.add("charging");
-    spinBtn.setAttribute("aria-busy", "true");
-    mode = "charging";
-    modeStart = performance.now();
-    hintText.classList.add("is-loading");
-    hintText.textContent = "Preparando el núcleo";
-
-    const CHARGE_MS = 1500;
-    const BURST_MS = 900;
-
-    setTimeout(() => {
-      mode = "burst";
-      particles.forEach((p) => {
-        p.burstVX = 6 + Math.random() * 10;
-        p.life = 1;
-      });
-    }, CHARGE_MS);
-
-    setTimeout(async () => {
-      const round = await pickRound();
-      if (round) {
-        resultImage.src = round.image;
-        resultImage.alt = round.question;
-        questionText.textContent = round.question;
-        resultImage.onload = () => {
-          if (round.image.startsWith("blob:")) URL.revokeObjectURL(round.image);
-        };
-        if (round.info) {
-          learnMoreBtn.hidden = false;
-          learnMoreInfo.hidden = true;
-          learnMoreInfo.textContent = round.info;
-        } else {
-          learnMoreBtn.hidden = true;
-          learnMoreInfo.hidden = true;
-        }
-      }
-      screenSpin.hidden = true;
-      screenResult.hidden = false;
-    }, CHARGE_MS + BURST_MS);
+  // revoca el blob ANTERIOR (no el nuevo en onload: eso rompía la imagen al volver atrás)
+  let lastBlobUrl = "";
+  function showRound(round) {
+    if (!round) {
+      questionText.textContent = "Aún no hay contenido: configúralo en el panel.";
+      resultImage.removeAttribute("src");
+      resultImage.alt = "";
+      learnMoreBtn.hidden = true;
+      learnMoreInfo.hidden = true;
+      return;
+    }
+    if (lastBlobUrl.startsWith("blob:")) URL.revokeObjectURL(lastBlobUrl);
+    lastBlobUrl = String(round.image || "").startsWith("blob:") ? round.image : "";
+    if (round.image) {
+      resultImage.src = round.image;
+      resultImage.alt = round.question;
+    } else {
+      resultImage.removeAttribute("src");
+      resultImage.alt = round.question;
+    }
+    questionText.textContent = round.question;
+    const hasInfo = Boolean(round.info);
+    learnMoreBtn.hidden = !hasInfo;
+    learnMoreInfo.hidden = true;
+    if (hasInfo) {
+      learnMoreInfo.textContent = round.info;
+      learnMoreBtn.firstChild.textContent = "Aprender más ";
+    }
   }
 
   spinBtn.addEventListener("click", startSpin);

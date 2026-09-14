@@ -6,8 +6,10 @@
 :root{
   --radius-pill: 999px;
   --ease-liquid: cubic-bezier(.22,.9,.24,1);
+  --ease-spring: cubic-bezier(.34,1.4,.4,1);
   --dur-fast: .35s;
   --dur-med: .7s;
+  --helio-glow: 0 0 14px rgba(56,228,242,.28), 0 0 42px rgba(56,228,242,.12);
 }
 
 /* ---------- Tema NOCHE (Titanio Negro) ---------- */
@@ -107,31 +109,49 @@ textarea{
 }
 .theme-day #fog-canvas{ mix-blend-mode: multiply; opacity:.28; }
 
-/* ---------- Glass primitives ---------- */
+/* ---------- Glass primitives: helio líquido (Liquid Glass iOS) ---------- */
+/* Dos capas: brillo especular arriba (luz) + tinte frío abajo (profundidad).
+   Es el mismo lenguaje de iOS 26 Liquid Glass, pero teñido criogénico. */
 .pill-glass{
-  background: var(--surface);
+  --glass-hi: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 42%);
+  --glass-lo: radial-gradient(120% 130% at 50% 115%, rgba(56,228,242,.14), transparent 55%);
+  background:
+    var(--glass-hi),
+    var(--glass-lo),
+    var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(170%) brightness(1.06);
+  -webkit-backdrop-filter: blur(18px) saturate(170%) brightness(1.06);
   box-shadow:
-    inset 0 1px 0 var(--specular),
-    inset 0 -6px 14px rgba(0,0,0,.12),
-    0 8px 24px rgba(0,0,0,.18);
+    inset 0 1px 1px var(--specular),
+    inset 0 -8px 16px rgba(0,0,0,.14),
+    inset 2px 0 8px rgba(124,244,255,.06),
+    inset -2px 0 8px rgba(28,107,216,.08),
+    0 8px 24px rgba(0,0,0,.18),
+    var(--helio-glow);
   color:var(--text-0);
-  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast) var(--ease-liquid);
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast) var(--ease-liquid), box-shadow var(--dur-fast);
 }
 
 .pill-glass-strong{
-  background: var(--surface-strong);
+  --glass-hi: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0) 46%);
+  --glass-lo: radial-gradient(130% 140% at 50% 118%, rgba(56,228,242,.18), transparent 58%);
+  background:
+    var(--glass-hi),
+    var(--glass-lo),
+    var(--surface-strong);
   border: 1px solid var(--border-strong);
   border-radius: 28px;
-  backdrop-filter: blur(26px) saturate(170%);
-  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(180%) brightness(1.07);
+  -webkit-backdrop-filter: blur(26px) saturate(180%) brightness(1.07);
   box-shadow:
-    inset 0 1px 0 var(--specular),
-    inset 0 -10px 20px rgba(0,0,0,.15),
-    var(--shadow-ambient);
+    inset 0 1px 1px var(--specular),
+    inset 0 -10px 22px rgba(0,0,0,.16),
+    inset 3px 0 12px rgba(124,244,255,.07),
+    inset -3px 0 12px rgba(28,107,216,.10),
+    var(--shadow-ambient),
+    var(--helio-glow);
 }
 
 /* ---------- Topbar ---------- */
@@ -246,7 +266,7 @@ textarea{
 }
 
 .ring-jagged{
-  fill: rgba(56,228,242,.035);
+  fill: rgba(56,228,242,.05);
   stroke: var(--helio-a);
   stroke-width: 2.5;
   stroke-linecap:round;
@@ -254,6 +274,10 @@ textarea{
   transition: stroke var(--dur-med);
   filter: drop-shadow(0 0 4px var(--helio-a)) drop-shadow(0 0 11px var(--helio-b));
   animation:helium-ring-breathe 3.6s ease-in-out infinite;
+}
+/* Anillo con volumen líquido: doble trazo (núcleo brillante + halo frío) */
+.ring-jagged{
+  paint-order: stroke;
 }
 .theme-day .ring-jagged{
   fill: rgba(31,167,201,.08);
@@ -292,7 +316,36 @@ textarea{
 @keyframes flicker{ 0%,100%{ opacity:1;} 50%{ opacity:.55; filter:blur(.4px);} }
 @keyframes helium-ring-breathe{
   0%,100%{ filter:drop-shadow(0 0 3px var(--helio-a)) drop-shadow(0 0 8px var(--helio-b)); }
-  50%{ filter:drop-shadow(0 0 6px var(--helio-a)) drop-shadow(0 0 15px var(--helio-b)); }
+  50%{ filter:drop-shadow(0 0 7px var(--helio-a)) drop-shadow(0 0 18px var(--helio-b)) drop-shadow(0 0 34px var(--helio-c)); }
+}
+
+/* Núcleo con refracción líquida: halo exterior + brillo interior que respira */
+.wheel-wrap::before{
+  content:"";
+  position:absolute;
+  inset:12%;
+  border-radius:50%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,.28), transparent 34%),
+    radial-gradient(circle at 50% 50%, rgba(56,228,242,.10), transparent 62%),
+    radial-gradient(circle at 50% 88%, rgba(28,107,216,.14), transparent 60%);
+  filter:blur(6px) saturate(1.3);
+  animation:helium-core-glow 4.2s ease-in-out infinite;
+}
+@keyframes helium-core-glow{
+  0%,100%{ opacity:.55; transform:scale(.985); }
+  50%{ opacity:1; transform:scale(1.02); }
+}
+.wheel-wrap::after{
+  content:"";
+  position:absolute;
+  inset:6%;
+  border-radius:50%;
+  pointer-events:none;
+  border:1px solid rgba(124,244,255,.18);
+  box-shadow:inset 0 0 26px rgba(56,228,242,.12), 0 0 30px rgba(56,228,242,.10);
+  animation:helium-core-glow 4.2s ease-in-out infinite reverse;
 }
 
 .hint{
@@ -433,7 +486,9 @@ textarea{
 }
 
 @media (prefers-reduced-motion: reduce){
-  *{ animation-duration:.001s !important; transition-duration:.001s !important; }
+  *, *::before, *::after{ animation-duration:.001s !important; animation-iteration-count:1 !important; transition-duration:.001s !important; }
+  #fog-canvas, #particle-canvas{ display:none; }
+  .wheel-wrap::before, .wheel-wrap::after{ display:none; }
 }
 
 /* ---------- Distribución automática para pantallas grandes ---------- */
