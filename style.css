@@ -226,7 +226,9 @@ textarea{
   width:160%;
   height:160%;
   pointer-events:none;
-  display:block;
+  display:none; /* fondo parejo: sin partículas */
+  visibility:hidden;
+  opacity:0;
 }
 
 .ring-outer{
