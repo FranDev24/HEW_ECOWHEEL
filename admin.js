@@ -60,6 +60,66 @@
     });
   }
 
+  async function getImageBlob(id) {
+    if (!id) return null;
+    try {
+      const db = await openImageDb();
+      const blob = await new Promise((resolve, reject) => {
+        const req = db.transaction(IMAGE_STORE_NAME).objectStore(IMAGE_STORE_NAME).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      return blob instanceof Blob ? blob : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function deleteImageBlob(id) {
+    if (!id) return;
+    try {
+      const db = await openImageDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+        tx.objectStore(IMAGE_STORE_NAME).delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch { /* noop */ }
+  }
+
+  // Cache de objectURLs por imageId: la lista reutiliza la misma URL
+  // sin re-leer IndexedDB en cada render. Se revocan al eliminar.
+  const thumbUrlCache = new Map(); // imageId -> objectURL
+  async function thumbUrlForId(imageId) {
+    if (!imageId) return "";
+    if (thumbUrlCache.has(imageId)) return thumbUrlCache.get(imageId);
+    const blob = await getImageBlob(imageId);
+    if (!blob) return "";
+    const url = URL.createObjectURL(blob);
+    thumbUrlCache.set(imageId, url);
+    return url;
+  }
+  function forgetThumbUrl(imageId) {
+    const url = thumbUrlCache.get(imageId);
+    if (url) {
+      try { URL.revokeObjectURL(url); } catch { /* noop */ }
+      thumbUrlCache.delete(imageId);
+    }
+  }
+
+  // Fuente de previsualización para CUALQUIER round, sin importar
+  // cómo se guardó: formulario (images[]), masiva/Drive (imageId) o legado (image).
+  async function thumbSrcFor(round) {
+    if (!round) return "";
+    if (round.images && round.images[0]) return round.images[0];
+    if (round.imageId) return await thumbUrlForId(round.imageId);
+    if (round.image) return round.image;
+    return "";
+  }
+
   async function storeImage(id, file) {
     const db = await openImageDb();
     await new Promise((resolve, reject) => {
@@ -486,7 +546,7 @@
 
   driveImportBtn.addEventListener("click", importFromDrive);
 
-  function renderList() {
+  async function renderList() {
     const rounds = loadRounds();
     listCountEl.textContent = `${rounds.length} item${rounds.length === 1 ? "" : "s"}`;
     listFooterEl.textContent =
@@ -498,16 +558,17 @@
       return;
     }
 
-    rounds.forEach((round) => {
+    for (const round of rounds) {
       const row = document.createElement("div");
       row.className = "list-item";
+      const imgCount = round.imageId ? 1 : (round.images ? round.images.length : (round.image ? 1 : 0));
       row.innerHTML = `
-        <div class="list-item-thumb">
-          ${round.images && round.images[0] ? `<img src="${round.images[0]}" alt="" />` : "?"}
+        <div class="list-item-thumb" data-thumb>
+          <span class="thumb-fallback" aria-hidden="true">?</span>
         </div>
         <div class="list-item-body">
           <div class="list-item-question">${escapeHtml(round.question)}</div>
-          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${round.imageId ? "1 img" : `${round.images ? round.images.length : 0} img`}</div>
+          <div class="list-item-meta"><span class="dot"></span> Estabilizado · ${imgCount} img</div>
         </div>
         <div class="list-item-actions">
           <button type="button" data-action="edit" aria-label="Editar" title="Editar">
@@ -521,7 +582,26 @@
       row.querySelector('[data-action="edit"]').addEventListener("click", () => startEdit(round));
       row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteRound(round.id));
       listItemsEl.appendChild(row);
-    });
+
+      // Previsualización AUTOMÁTICA: siempre intenta pintar la imagen real.
+      // El "?" solo queda si de verdad no hay imagen recuperable.
+      const thumbBox = row.querySelector("[data-thumb]");
+      try {
+        const src = await thumbSrcFor(round);
+        if (src && thumbBox.isConnected) {
+          thumbBox.innerHTML = "";
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "";
+          img.decoding = "async";
+          img.loading = "lazy";
+          img.addEventListener("error", () => {
+            thumbBox.innerHTML = `<span class="thumb-fallback" aria-hidden="true">?</span>`;
+          });
+          thumbBox.appendChild(img);
+        }
+      } catch { /* se queda el "?" de respaldo */ }
+    }
   }
 
   function escapeHtml(str) {
@@ -530,11 +610,19 @@
     return div.innerHTML;
   }
 
-  function startEdit(round) {
+  async function startEdit(round) {
     editingId = round.id;
     questionInput.value = round.question || "";
     infoInput.value = round.info || "";
     currentImages = [...(round.images || [])];
+    // Si el round vive en IndexedDB (carga masiva / Drive), trae su
+    // imagen real al editor para que también se previsualice y no se pierda.
+    if (!currentImages.length && (round.imageId || round.image)) {
+      try {
+        const src = await thumbSrcFor(round);
+        if (src) currentImages = [src];
+      } catch { /* editor sin imagen previa */ }
+    }
     renderThumbs();
     saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Actualizar en EcoWheel`;
     cancelEditBtn.hidden = false;
@@ -551,9 +639,17 @@
     cancelEditBtn.hidden = true;
   }
 
-  function deleteRound(id) {
-    const rounds = loadRounds().filter((r) => r.id !== id);
-    saveRounds(rounds);
+  async function deleteRound(id) {
+    const rounds = loadRounds();
+    const target = rounds.find((r) => r.id === id);
+    const rest = rounds.filter((r) => r.id !== id);
+    // Limpieza total: borra también el blob en IndexedDB y revoca su URL
+    // para no dejar basura huérfana que ocupe espacio.
+    if (target?.imageId) {
+      forgetThumbUrl(target.imageId);
+      await deleteImageBlob(target.imageId);
+    }
+    saveRounds(rest);
     renderList();
     if (editingId === id) resetForm();
   }

@@ -449,6 +449,14 @@
   flex-shrink:0;
   font-size:14px;
 }
+/* Previsualización real de la imagen subida: rellena el círculo sin deformar */
+.list-item-thumb img{
+  width:100%; height:100%;
+  object-fit:cover;
+  object-position:center;
+  display:block;
+}
+.thumb-fallback{ line-height:1; opacity:.8; }
 
 .list-item-body{ flex:1; min-width:0; }
 .list-item-question{
