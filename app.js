@@ -163,24 +163,31 @@
       this.angle = Math.random() * Math.PI * 2;
     }
     reset(spread) {
+      this.mode = "ring";
       this.angle = Math.random() * Math.PI * 2;
       const base = Math.min(cw || 300, ch || 300);
       this.baseRadius = base * (spread ? (0.18 + this.orbit * 0.42) : 0.22);
       this.radius = this.baseRadius;
       this.speed = (0.12 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
-      this.size = (0.7 + Math.random() * 2.0) * this.depth;
+      this.sizeBase = (0.7 + Math.random() * 2.0) * this.depth;
+      this.size = this.sizeBase;
       this.hueMix = Math.random();
       this.wob = Math.random() * Math.PI * 2;
       this.wobSpeed = 1.2 + Math.random() * 2.2;
       this.life = 1;
       this.burstV = 0;
+      this.burstVX = 0; this.burstVY = 0;
+      this.dx = 0; this.dy = 0;
       this.tw = Math.random() * Math.PI * 2; // parpadeo
     }
   }
 
   const isMobile = matchMedia("(max-width: 700px)").matches;
-  const PARTICLE_COUNT = reducedMotion ? 0 : (isMobile ? 64 : 110);
+  const PARTICLE_COUNT = reducedMotion ? 0 : (isMobile ? 80 : 160);
   const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => new Particle(i));
+
+  // ondas de choque concéntricas: anillos que se expanden al estallar el núcleo
+  let shockwaves = [];
 
   // BUG FIX: puntero medido en coords del CANVAS (no del botón).
   const pointer = { x: null, y: null, active: false };
@@ -220,7 +227,10 @@
   }
 
   function updateParticles(dt) {
-    ctx.clearRect(0, 0, cw, ch);
+    // rastro líquido: en vez de borrar, funde con transparencia → motion trail
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(8,8,12,0.18)";
+    ctx.fillRect(0, 0, cw, ch);
     if (!particles.length) return;
     const C = helio();
     ctx.globalCompositeOperation = "lighter";
@@ -230,45 +240,76 @@
     const speedMul = charging ? 5.2 : 1;
     const pull = charging ? 0.10 : 0;
 
+    // ondas de choque concéntricas al estallar
+    for (const sw of shockwaves) {
+      sw.r += dt * 340;
+      sw.a -= dt * 1.3;
+      if (sw.a > 0.02) {
+        ctx.strokeStyle = rgba(C.b, clamp(sw.a * 0.45, 0, 0.45));
+        ctx.lineWidth = clamp(sw.a * 3.5, 0.5, 3.5);
+        ctx.beginPath();
+        ctx.arc(cx, cy, sw.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    shockwaves = shockwaves.filter(sw => sw.a > 0.02);
+
     for (const p of particles) {
       if (bursting) {
-        p.radius += p.burstV * dt * 60;
+        // decaimiento natural de velocidad (amortiguación)
+        p.burstVX *= (1 - dt * 2.8);
+        p.burstVY *= (1 - dt * 2.8);
+        // helio asciende: sesgo vertical ascendente
+        p.burstVY -= dt * 420;
+        // acumular desplazamiento respecto al punto orbital
+        p.dx += p.burstVX * dt * 60;
+        p.dy += p.burstVY * dt * 60;
         p.angle += p.speed * 0.02 * dt * 60;
-        p.life -= dt * 0.9;
+        const lifeRate = 0.35 + p.depth * 0.35 + Math.random() * 0.3;
+        p.life -= dt * lifeRate;
         if (p.life < 0) p.life = 0;
+        // variación de tamaño: algunas crecen, otras se encogen
+        const targetScale = 0.5 + Math.random() * 1.2;
+        p.size += (targetScale - p.size) * Math.min(1, dt * 5);
       } else {
         p.angle += p.speed * speedMul * dt * 0.36 * p.depth;
         p.wob += dt * p.wobSpeed;
         p.tw += dt * 3;
-        const wobble = Math.sin(p.wob) * 6 * p.depth;
+        const wobble = Math.sin(p.wob) * 8 * p.depth;
         const target = p.baseRadius * (1 - pull) + wobble;
-        p.radius += (target - p.radius) * Math.min(1, dt * 5);
+        p.radius += (target - p.radius) * Math.min(1, dt * 6);
+        // respiración sutil del tamaño en reposo
+        const breathe = 1 + Math.sin(p.tw * 0.5) * 0.08 * p.depth;
+        p.size = p.sizeBase * breathe;
+        p.dx = 0; p.dy = 0;
         p.life = 1;
       }
 
-      let px = cx + Math.cos(p.angle) * p.radius;
-      let py = cy + Math.sin(p.angle) * p.radius;
+      let px = cx + Math.cos(p.angle) * p.radius + p.dx;
+      let py = cy + Math.sin(p.angle) * p.radius + p.dy;
 
       if (pointer.active && pointer.x != null && !bursting) {
         const dx = pointer.x - px, dy = pointer.y - py;
         const dist = Math.hypot(dx, dy) || 1;
         // repulsión suave tipo menisco líquido (no teletransporte)
-        const f = clamp(900 / (dist * dist), 0, 1.4) * dt * 22 * p.depth;
+        const f = clamp(900 / (dist * dist), 0, 1.6) * dt * 22 * p.depth;
         px -= (dx / dist) * f;
         py -= (dy / dist) * f;
       }
 
       // burbuja de helio: núcleo blanco + halo de color + aro especular
       const col = p.hueMix > 0.66 ? C.b : p.hueMix > 0.33 ? C.a : C.c;
-      const twinkle = 0.72 + 0.28 * Math.sin(p.tw);
-      const R = Math.max(2, p.size * 5 * (charging ? 1.5 : 1));
+      const twinkle = 0.65 + 0.35 * Math.sin(p.tw) * p.depth;
+      const chargeScale = charging ? 1.8 : 1;
+      const burstScale = bursting ? Math.max(0.3, p.life) : 1;
+      const R = Math.max(2, p.size * 5 * chargeScale * burstScale);
       ctx.globalAlpha = clamp(0.5 * p.life * twinkle * (0.5 + p.depth * 0.5), 0, 1);
       ctx.drawImage(glowSprite(col), px - R, py - R, R * 2, R * 2);
       // micro-burbuja: punto denso que vende "líquido"
       ctx.globalAlpha = clamp(0.55 * p.life * twinkle, 0, 1);
       ctx.fillStyle = rgba(C.white, 1);
       ctx.beginPath();
-      ctx.arc(px, py, Math.max(0.5, p.size * 0.45), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(0.5, p.size * 0.45 * chargeScale * burstScale), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -277,6 +318,7 @@
     if (bursting && particles.every((p) => p.life <= 0)) {
       anim.mode = "settle";
       particles.forEach((p) => p.reset(true));
+      shockwaves = [];
     }
   }
 
@@ -461,12 +503,14 @@
       particles.forEach((p) => {
         if (p.mode === "ring") {
           const a = Math.random() * Math.PI * 2;
-          const sp = 6 + Math.random() * 10;
+          const sp = 10 + Math.random() * 18;
           p.burstVX = Math.cos(a) * sp;
           p.burstVY = Math.sin(a) * sp;
         }
         p.life = 1;
       });
+      // onda de choque central al estallar
+      shockwaves.push({ r: 0, a: 1 });
     }, CHARGE_MS));
 
     spinTimers.push(setTimeout(async () => {
