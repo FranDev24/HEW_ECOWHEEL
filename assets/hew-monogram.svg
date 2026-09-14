@@ -1,22 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <!-- HEW monogram FIEL a la referencia (sin circulo exterior: lo aporta #ring-jagged).
-       H simetrica grande (64/136, 52/148) + 5 arcos izq convergentes + 4 ondas der flotantes + borde exterior
-       Trazo uniforme 5px, puntas redondas, como el original blanco sobre negro. -->
-  <g stroke="#FFFFFF" stroke-width="5">
-    <!-- H: puentes sup/inf con esquinas redondeadas (esqueleto central) -->
-    <path d="M64 52 L64 84 Q64 92 72 92 L128 92 Q136 92 136 84 L136 52"/>
-    <path d="M64 148 L64 116 Q64 108 72 108 L128 108 Q136 108 136 116 L136 148"/>
-    <!-- Lado IZQ: 5 arcos concentricos convergentes (pegados arriba/abajo) -->
-    <path d="M64 52 C20 66 20 134 64 148"/>
-    <path d="M66 54 C34 66 34 134 66 146"/>
-    <path d="M68 58 C46 68 46 132 68 142"/>
-    <path d="M70 64 C56 72 56 128 70 136"/>
-    <path d="M70 76 C62 82 62 118 70 124"/>
-    <!-- Lado DER: borde exterior + 4 ondas flotantes (como la referencia) -->
-    <path d="M136 52 C180 66 180 134 136 148"/>
-    <path d="M164 62 C178 72 178 128 164 138"/>
-    <path d="M156 70 C172 78 172 122 156 130"/>
-    <path d="M148 78 C160 84 160 116 148 122"/>
-    <path d="M140 86 C148 90 148 110 140 114"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- HEW logo EXACTO de la referencia: circulo exterior + H de trazo grueso.
+       IZQ: 5 arcos convergentes que se juntan arriba/abajo en la H.
+       DER: borde exterior de la H + 4 ondas flotantes internas.
+       viewBox 240 con padding para que el glow CSS no recorte el trazo. -->
+  <g stroke="#FFFFFF" stroke-width="7">
+    <!-- circulo exterior del logo (parte del logo, NO del anillo animado) -->
+    <circle cx="120" cy="120" r="102"/>
+    <!-- H: puente superior con esquinas redondeadas -->
+    <path d="M84 64 L84 104 Q84 114 94 114 L146 114 Q156 114 156 104 L156 64"/>
+    <!-- H: puente inferior con esquinas redondeadas -->
+    <path d="M84 176 L84 136 Q84 126 94 126 L146 126 Q156 126 156 136 L156 176"/>
+    <!-- IZQ: 5 arcos convergentes (nacen/mueren en la barra izq de la H) -->
+    <path d="M84 64 C32 82 32 158 84 176"/>
+    <path d="M88 66 C44 82 44 158 88 174"/>
+    <path d="M92 70 C56 84 56 156 92 170"/>
+    <path d="M94 76 C66 88 66 152 94 164"/>
+    <path d="M94 88 C74 96 74 144 94 152"/>
+    <!-- DER: borde exterior de la barra derecha de la H -->
+    <path d="M156 64 C208 82 208 158 156 176"/>
+    <!-- DER: 4 ondas flotantes internas (puntas redondas, sin tocar la H) -->
+    <path d="M190 84 C204 96 204 144 190 156"/>
+    <path d="M180 92 C196 102 196 138 180 148"/>
+    <path d="M170 100 C184 108 184 132 170 140"/>
+    <path d="M160 108 C170 112 170 128 160 132"/>
   </g>
 </svg>
