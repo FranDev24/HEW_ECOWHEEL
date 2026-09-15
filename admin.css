@@ -40,6 +40,8 @@
 
 .admin-header{ margin-bottom:28px; max-width:640px; }
 
+.admin-header-actions{ display:flex; gap:10px; align-items:center; }
+
 .admin-back{
   width:40px;
   height:40px;
@@ -166,8 +168,9 @@
   margin:0 auto 10px;
   border-radius:50%;
   display:flex; align-items:center; justify-content:center;
-  background: rgba(120,130,150,.12);
-  color: var(--text-1);
+  background: rgba(56,228,242,.10);
+  color: var(--helio-b);
+  box-shadow: inset 0 0 0 1px rgba(56,228,242,.30), 0 0 14px rgba(56,228,242,.14);
 }
 .dropzone-title{ font-size:14px; font-weight:600; margin:0 0 4px; }
 .dropzone-hint{ font-size:12px; color: var(--text-1); margin:0; }
@@ -183,12 +186,15 @@
   position:absolute; top:-6px; right:-6px;
   width:18px; height:18px;
   border-radius:50%;
-  background:#c0392b;
+  background: var(--accent-spark);
   color:#fff;
   border:none;
   font-size:11px;
-  line-height:18px;
+  line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  padding:0;
   cursor:pointer;
+  box-shadow:0 0 10px rgba(255,107,122,.45);
 }
 
 .save-btn{
@@ -197,14 +203,23 @@
   padding:15px 18px;
   border:none;
   border-radius:14px;
-  background: linear-gradient(120deg, var(--helio-a), #6a4fe0);
-  color:#04121a;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background: linear-gradient(120deg, var(--helio-a), var(--helio-b));
+  color:#001418;
   font-weight:800;
   font-size:15px;
   cursor:pointer;
-  box-shadow: 0 12px 26px rgba(56,228,242,.22);
-  transition: transform .2s var(--ease-liquid);
+  box-shadow: 0 10px 26px rgba(56,228,242,.28), inset 0 1px 0 rgba(255,255,255,.45);
+  transition: transform .2s var(--ease-liquid), box-shadow .2s, filter .2s;
 }
+.save-btn:hover{
+  filter:brightness(1.06);
+  box-shadow: 0 14px 34px rgba(56,228,242,.42), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.save-btn svg{ flex:0 0 auto; }
 .save-btn:active{ transform: scale(.98); }
 
 .cancel-edit-btn{
@@ -217,6 +232,47 @@
   color: var(--text-1);
   cursor:pointer;
   font-size:13.5px;
+  transition:color .2s, border-color .2s;
+}
+.cancel-edit-btn:hover{ color:var(--text-0); border-color:var(--helio-a); }
+
+/* ---------- Segmented: Redactar / Cargar PDF (píldoras del wheel) ---------- */
+.seg{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.seg-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 16px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text-1);
+  font-size:13.5px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:inset 0 1px 1px var(--specular);
+  transition:color .2s, border-color .2s, box-shadow .2s, transform .15s var(--ease-liquid);
+}
+.seg-btn svg{ flex:0 0 auto; }
+.seg-btn:hover{ color:var(--text-0); border-color:var(--helio-a); }
+.seg-btn:active{ transform:scale(.97); }
+.seg-btn.is-active{
+  color:var(--helio-b);
+  border-color:rgba(56,228,242,.55);
+  background:
+    radial-gradient(120% 160% at 50% 0%, rgba(56,228,242,.12), transparent 60%),
+    var(--surface);
+  box-shadow:inset 0 1px 1px var(--specular), 0 0 16px rgba(56,228,242,.25);
+}
+.theme-day .seg-btn{ box-shadow:inset 0 1px 1px var(--specular), 0 1px 4px rgba(60,64,80,.10); }
+.theme-day .seg-btn.is-active{
+  color:var(--helio-a);
+  border-color:rgba(31,167,201,.55);
+  box-shadow:inset 0 1px 1px var(--specular), 0 0 12px rgba(31,167,201,.22);
 }
 
 .admin-side{ display:flex; flex-direction:column; gap:20px; }
@@ -313,8 +369,8 @@
   flex:0 0 auto;
   padding:2px 8px;
   border-radius:6px;
-  background: linear-gradient(120deg, var(--helio-a), #6a4fe0);
-  color:#04121a;
+  background: linear-gradient(120deg, var(--helio-a), var(--helio-b));
+  color:#001418;
   font-size:10.5px;
   font-weight:800;
   letter-spacing:.04em;
@@ -636,4 +692,162 @@
   margin:14px 0 0;
   font-size:12px;
   color: var(--text-1);
+}
+
+/* =========================================================
+   ECOWHEEL — Identidad visual del panel = identidad del wheel
+   Negro total + neón helio (cian). Sin morados ni azules plenos.
+   Solo visual: no toca layout ni funcionalidad.
+   ========================================================= */
+.admin-body{
+  background:
+    radial-gradient(1100px 520px at 50% -140px, rgba(56,228,242,.09), transparent 65%),
+    var(--bg-0);
+}
+.admin-topline{
+  height:3px;
+  background:linear-gradient(90deg, transparent, var(--helio-a) 22%, var(--helio-b) 50%, var(--helio-a) 78%, transparent);
+  box-shadow:0 0 16px rgba(56,228,242,.45);
+}
+.admin-title{
+  text-shadow:0 0 18px var(--text-glow), 0 0 34px rgba(56,228,242,.16);
+}
+
+/* Botón día/noche: MISMA ubicación exacta que en el wheel.
+   El wheel lo coloca dentro de .stage (max-width 1180px centrado, margin auto)
+   con el padding del topbar: 36px lateral en desktop, 18px en móvil.
+   Este contenedor fijo replica ese molde con los mismos valores,
+   así el botón queda alineado con la columna de contenido, no en la esquina. */
+.admin-fabbar{
+  position:fixed;
+  top:0; left:0; right:0;
+  display:flex;
+  justify-content:flex-end;
+  max-width:min(100vw, 1180px);
+  margin:0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 18px 0;
+  pointer-events:none;
+  z-index:60;
+}
+.admin-fabbar .pill-glass{ pointer-events:auto; }
+.admin-fabbar .pill-glass:hover{ border-color:var(--helio-a); }
+@media (min-width:760px){
+  .admin-fabbar{ padding-left:36px; padding-right:36px; }
+}
+
+/* Botones circulares del header (volver / tema / reiniciar): mismos del wheel */
+.admin-back, .admin-reset{
+  color:var(--text-1);
+  background:var(--surface);
+  border:1px solid var(--border);
+  box-shadow:inset 0 1px 1px var(--specular), 0 0 12px rgba(56,228,242,.14);
+  transition:transform .2s var(--ease-liquid), border-color .2s, box-shadow .2s, color .2s;
+}
+.admin-reset{
+  width:40px;
+  height:40px;
+  padding:0;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.admin-reset svg{ color:var(--text-1); transition:color .2s; }
+.admin-back:hover, .admin-reset:hover{
+  color:var(--text-0);
+  border-color:var(--helio-a);
+  box-shadow:inset 0 1px 1px var(--specular), 0 0 18px rgba(56,228,242,.35);
+}
+.admin-back:hover svg, .admin-reset:hover svg{ color:var(--helio-b); }
+.admin-back:active, .admin-reset:active{ transform:scale(.92); }
+
+/* Tarjetas: vidrio negro con filo blanco y aura cian suave (como el stage) */
+.admin-card, .list-card{
+  position:relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02)),
+    radial-gradient(120% 70% at 50% 0%, rgba(56,228,242,.075), transparent 62%),
+    var(--bg-0);
+  border:1px solid var(--border);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 18px 44px rgba(0,0,0,.55),
+    0 0 22px rgba(56,228,242,.08);
+}
+
+/* Focus: anillo cian */
+.field-input:focus, .bulk-file-input:focus{
+  border-color:var(--helio-a);
+  box-shadow:0 0 0 3px rgba(56,228,242,.16), 0 0 16px rgba(56,228,242,.22);
+  outline:none;
+}
+
+/* Dropzones: cian neón */
+.dropzone{
+  border:1.5px dashed rgba(56,228,242,.45);
+  background:
+    radial-gradient(120% 130% at 50% 0%, rgba(56,228,242,.07), transparent 55%),
+    rgba(120,130,150,.05);
+  transition:border-color .2s, box-shadow .2s, transform .2s var(--ease-liquid);
+}
+.dropzone:hover, .dropzone:focus-visible, .dropzone.dragover{
+  border-color:var(--helio-a);
+  box-shadow:0 0 20px rgba(56,228,242,.22), inset 0 0 18px rgba(56,228,242,.07);
+}
+
+/* Lista del wheel: hover cian */
+.list-items > *{
+  transition:border-color .2s, box-shadow .2s;
+}
+.list-items > *:hover{
+  border-color:rgba(56,228,242,.55);
+  box-shadow:0 0 16px rgba(56,228,242,.16);
+}
+.list-item-actions button{
+  transition:border-color .2s, box-shadow .2s, color .2s, transform .15s var(--ease-liquid);
+}
+.list-item-actions button:hover{
+  border-color:var(--helio-a);
+  color:var(--helio-b);
+  box-shadow:0 0 12px rgba(56,228,242,.25);
+}
+
+/* Píldora de visitas: punto helio en lugar de emoji */
+.visits-pill{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.visits-pill .dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--helio-a);
+  box-shadow:0 0 8px var(--helio-a);
+  flex:0 0 auto;
+}
+
+/* Tema DÍA: plata con acentos fríos */
+.theme-day .admin-body{
+  background:
+    radial-gradient(1100px 520px at 50% -140px, rgba(31,167,201,.12), transparent 65%),
+    var(--bg-0);
+}
+.theme-day .admin-card, .theme-day .list-card{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.55)),
+    var(--bg-0);
+  border:1px solid var(--border);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 16px 36px rgba(60,64,80,.16),
+    0 0 18px rgba(31,167,201,.10);
+}
+.theme-day .admin-back, .theme-day .admin-reset{
+  box-shadow:inset 0 1px 1px var(--specular), 0 2px 8px rgba(60,64,80,.14);
+}
+.theme-day .dropzone{ border-color:rgba(31,167,201,.5); }
+.theme-day .dropzone:hover, .theme-day .dropzone:focus-visible, .theme-day .dropzone.dragover{
+  box-shadow:0 0 16px rgba(31,167,201,.25), inset 0 0 14px rgba(31,167,201,.08);
 }

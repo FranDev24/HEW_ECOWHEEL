@@ -10,6 +10,31 @@
 (() => {
   "use strict";
 
+  /* ---------------- tema día/noche (misma clave e iconos que el wheel) --- */
+  const THEME_MOON = "M12 3a9 9 0 1 0 9 9c0-.35-.02-.7-.05-1.04A7 7 0 0 1 12 3Z";
+  const THEME_SUN = "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-15v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7";
+  function applyAdminTheme(theme) {
+    document.body.classList.toggle("theme-night", theme !== "day");
+    document.body.classList.toggle("theme-day", theme === "day");
+    try { localStorage.setItem("ecowheel-theme", theme); } catch { /* noop */ }
+    const icon = document.getElementById("admin-theme-icon");
+    if (icon) {
+      icon.innerHTML = theme === "day"
+        ? `<path d="${THEME_SUN}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
+        : `<path d="${THEME_MOON}" fill="currentColor"/>`;
+    }
+  }
+  try {
+    applyAdminTheme(localStorage.getItem("ecowheel-theme") || "night");
+  } catch { /* noop */ }
+  document.getElementById("admin-theme-btn")?.addEventListener("click", () => {
+    const isDay = document.body.classList.contains("theme-day");
+    applyAdminTheme(isDay ? "night" : "day");
+  });
+  window.addEventListener("storage", (e) => {
+    if (e.key === "ecowheel-theme" && e.newValue) applyAdminTheme(e.newValue);
+  });
+
   const STORAGE_KEY = "ecowheel-rounds";
   const MAX_IMAGES = 250;
   const MAX_BULK_ROUNDS = 250;
@@ -708,10 +733,10 @@
         </div>
         <div class="list-item-actions">
           <button type="button" data-action="edit" aria-label="Editar" title="Editar">
-            <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 20h4L18.4 9.6a1 1 0 0 0 0-1.4l-2.6-2.6a1 1 0 0 0-1.4 0L4 15.5V20Z"/></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/></svg>
           </button>
           <button type="button" data-action="delete" aria-label="Eliminar" title="Eliminar">
-            <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 7h12l-1 14H7L6 7Zm3-4h6l1 2H8l1-2Z"/></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
           </button>
         </div>
       `;
@@ -760,7 +785,7 @@
       } catch { /* editor sin imagen previa */ }
     }
     renderThumbs();
-    saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Actualizar en EcoWheel`;
+    saveBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></svg>Actualizar en EcoWheel`;
     cancelEditBtn.hidden = false;
     questionInput.focus();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -776,7 +801,7 @@
     stagedPdfs = [];
     try { fileInput.value = ""; } catch { /* noop */ }
     renderThumbs();
-    saveBtn.innerHTML = `<span aria-hidden="true">✨</span> Guardar en EcoWheel`;
+    saveBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></svg>Guardar en EcoWheel`;
     cancelEditBtn.hidden = true;
   }
 
@@ -910,7 +935,7 @@
   if (visitsPill) {
     const v = parseInt(localStorage.getItem("ecowheel-visits") || "0", 10) || 0;
     visitsPill.hidden = false;
-    visitsPill.textContent = `👥 ${v} visita${v === 1 ? "" : "s"} al wheel registradas en este equipo`;
+    visitsPill.innerHTML = `<span class="dot" aria-hidden="true"></span>${v} visita${v === 1 ? "" : "s"} al wheel registradas en este equipo`;
   }
   // URL LAN real para presentar en proyector/TV/PC de la misma red.
   const lanUrlInput = document.getElementById("share-lan-url");

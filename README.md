@@ -111,6 +111,19 @@ npm run dev
 
 Luego abre `http://localhost:8080`.
 
+`npm run dev` ejecuta `scripts/dev.js`, un guardián que evita el error
+`EADDRINUSE` cuando el puerto ya está ocupado:
+
+| Situación | Qué hace `npm run dev` |
+| --- | --- |
+| El host de EcoWheel ya está encendido en 8080 | Avisa, muestra los enlaces y termina con código 0 (no arranca otro) |
+| El puerto 8080 lo ocupa **otro** programa | Explica el problema y sugiere otro puerto (ya no lanza el stack trace de Node) |
+| El puerto 8080 está libre | Arranca `http-server` en primer plano (`Ctrl+C` para parar) |
+
+Para usar otro puerto: `$env:PORT=8090; npm run dev` (PowerShell) o
+`set PORT=8090 && npm run dev` (CMD). El comando original sin guardián sigue
+disponible como `npm run dev:raw`.
+
 También puedes usar un servidor estático simple porque el navegador bloquea
 `fetch`/módulos desde `file://`:
 
@@ -120,6 +133,55 @@ python3 -m http.server 8080
 
 # o con la extensión "Live Server" de VS Code
 ```
+
+## Host con un clic (recomendado)
+
+Doble clic en **`HOST_ECOWHEEL.cmd`** (raíz del proyecto). Ese archivo:
+
+1. Comprueba por HTTP si ya hay un host sirviendo EcoWheel en el puerto 8080
+   (si lo hay, lo reutiliza y **no** levanta otro).
+2. Si no hay host, ejecuta `npm install` cuando falte `http-server` y arranca
+   `http-server` minimizado en el puerto 8080.
+3. Espera a recibir `200` en `/index.html` (máx. ~24 s) y abre el navegador.
+
+Al terminar imprime los tres enlaces útiles:
+
+| Uso | Enlace |
+| --- | --- |
+| Wheel | `http://localhost:8080/` |
+| Panel de administración | `http://localhost:8080/admin.html` |
+| Celular / proyector en el mismo WiFi | `http://<tu-IP-LAN>:8080/` (p. ej. `http://192.168.20.28:8080/`) |
+
+> El enlace LAN cambia si te conectas a otra red; el script lo calcula en cada
+> ejecución con `ipconfig`.
+
+### Accesos directos en el Escritorio (clic real)
+
+Ejecuta una vez:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\_crear_accesos.ps1
+```
+
+Eso crea en el Escritorio tres iconos clickeables:
+
+| Icono | Qué hace |
+| --- | --- |
+| **EcoWheel Host** | Levanta el host (puerto 8080) y abre el navegador. Es el que se usa normalmente |
+| **EcoWheel Wheel** | Abre `http://localhost:8080/` (requiere el host encendido) |
+| **EcoWheel Admin** | Abre `http://localhost:8080/admin.html` (requiere el host encendido) |
+
+> Si mueves la carpeta del proyecto, vuelve a ejecutar `_crear_accesos.ps1`
+> para que los accesos apunten a la ruta nueva.
+
+### Desde VS Code (Run Task)
+
+`Ctrl+Shift+P` → **Tasks: Run Task** y elige:
+
+- `Host EcoWheel (8080) - click y listo`
+- `Host EcoWheel (8080) - sin abrir navegador`
+- `Host EcoWheel (npm run dev)`
+- `Monitor 4h + performance (autosupervisado)`
 
 ## Publicar gratis con GitHub Pages (link público)
 
