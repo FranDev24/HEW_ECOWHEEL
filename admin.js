@@ -160,10 +160,11 @@
      Una sola zona (dropzone/fileInput) + Drive: todo cae a stagedFiles y se
      previsualiza en thumbStrip automáticamente. El guardado decide:
      1 pregunta -> 1 tarjeta con la primera imagen; lista "1. .. 2. .." ->
-     N tarjetas emparejadas por número de archivo. */
+     N tarjetas emparejadas por ORDEN DE CARGA (la app numera sola:
+     1ª imagen subida/seleccionada = tarjeta 1). Nunca se pide renombrar. */
   let stagedFiles = []; // File[] acumulados (equipo o descargados de Drive)
   const stagedUrls = new Map(); // File -> objectURL para preview inmediata
-  let stagedPdfs = []; // File[] PDF de solución acumulados (numerados 1. 2. 3.…)
+  let stagedPdfs = []; // File[] PDF de solución acumulados (la posición = número)
 
   function setStatus(msg, ok) {
     if (!formStatus) return;
@@ -175,7 +176,7 @@
     const count = stagedFiles.length;
     if (fileCount) {
       fileCount.hidden = count === 0;
-      if (count > 0) fileCount.textContent = `✓ ${count} imagen${count === 1 ? "" : "es"} lista${count === 1 ? "" : "s"} para emparejar`;
+      if (count > 0) fileCount.textContent = `✓ ${count} imagen${count === 1 ? "" : "es"} · numeradas por orden de carga (la 1ª será la #1)`;
     }
     thumbStrip.innerHTML = "";
     thumbStrip.hidden = count === 0;
@@ -199,10 +200,36 @@
         if (url2) { try { URL.revokeObjectURL(url2); } catch { /* noop */ } stagedUrls.delete(file); }
         stagedFiles = stagedFiles.filter((f) => f !== file);
         syncFileInput();
-        refreshStagedUI();
+        refreshStagedUI(); // las restantes se renumeran solas
       });
+      // Corregir el orden sin renombrar nada: mover antes/después.
+      const order = document.createElement("span");
+      order.className = "thumb-order";
+      const prev = document.createElement("button");
+      prev.type = "button";
+      prev.className = "thumb-move";
+      prev.textContent = "‹";
+      prev.disabled = i === 0;
+      prev.setAttribute("aria-label", `Mover la imagen ${i + 1} una posición antes`);
+      prev.addEventListener("click", () => moveStaged(i, -1));
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "thumb-move";
+      next.textContent = "›";
+      next.disabled = i === stagedFiles.length - 1;
+      next.setAttribute("aria-label", `Mover la imagen ${i + 1} una posición después`);
+      next.addEventListener("click", () => moveStaged(i, 1));
+      order.appendChild(prev);
+      order.appendChild(next);
+      // Número asignado por la app según el orden de carga (no el nombre).
+      const badge = document.createElement("span");
+      badge.className = "thumb-badge";
+      badge.textContent = String(i + 1);
+      badge.title = `Imagen ${i + 1} por orden de carga`;
       item.appendChild(img);
       item.appendChild(rm);
+      item.appendChild(badge);
+      item.appendChild(order);
       thumbStrip.appendChild(item);
     });
     if (count > 24) {
@@ -211,6 +238,17 @@
       more.textContent = `… y ${count - 24} más`;
       thumbStrip.appendChild(more);
     }
+  }
+
+  // Intercambia dos posiciones del lote y repinta: la numeración es automática.
+  function moveStaged(index, delta) {
+    const j = index + delta;
+    if (j < 0 || j >= stagedFiles.length) return;
+    const tmp = stagedFiles[index];
+    stagedFiles[index] = stagedFiles[j];
+    stagedFiles[j] = tmp;
+    syncFileInput();
+    refreshStagedUI();
   }
 
   function syncFileInput() {
@@ -301,7 +339,7 @@
     const n = stagedPdfs.length;
     if (pdfCount) {
       pdfCount.hidden = n === 0;
-      if (n > 0) pdfCount.textContent = `✓ ${n} PDF de solución${n === 1 ? "" : "es"} listo${n === 1 ? "" : "s"} para emparejar`;
+      if (n > 0) pdfCount.textContent = `✓ ${n} PDF de solución · el 1º que subas será la solución #1`;
     }
     if (!pdfStrip) return;
     pdfStrip.innerHTML = "";
@@ -311,7 +349,7 @@
       item.className = "pdf-item";
       const badge = document.createElement("span");
       badge.className = "pdf-badge";
-      badge.textContent = "PDF";
+      badge.textContent = `PDF ${i + 1}`; // posición de carga = número de solución
       const name = document.createElement("span");
       name.className = "pdf-name";
       name.textContent = file.name || `Solución ${i + 1}`;
@@ -413,52 +451,56 @@
     return Number.isFinite(n) && n >= 1 && n <= MAX_BULK_ROUNDS ? n : null;
   }
 
+  // Emparejamiento SIN renombrar: la posición de carga (selección o arrastre)
+  // es el número de la tarjeta. Regla inteligente: si TODOS los archivos ya
+  // traen número al inicio, se ordena numéricamente (así "10" no cae entre
+  // "1" y "2" por el orden alfabético del explorador de archivos).
+  function orderFilesByLoad(files) {
+    const list = (files || []).slice(0, MAX_BULK_ROUNDS);
+    const allNumbered = list.length > 1 && list.every((f) => getImageNumber(f) !== null);
+    if (allNumbered) {
+      list.sort((a, b) =>
+        String(a?.name || "").localeCompare(String(b?.name || ""), undefined, { numeric: true, sensitivity: "base" })
+      );
+    }
+    return list;
+  }
+
   async function importBulk() {
     const questions = parseBulkQuestions(questionInput.value);
-    const files = Array.from(fileInput.files?.length ? fileInput.files : stagedFiles).filter((file) => file.type.startsWith("image/"));
-    if (!questions.size || !files.length) {
+    const rawFiles = Array.from(fileInput.files?.length ? fileInput.files : stagedFiles).filter((file) => file.type.startsWith("image/"));
+    if (!questions.size || !rawFiles.length) {
       setStatus("Escribe la pregunta (o lista 1. 2. 3.) y sube al menos 1 imagen.", false);
       return 0;
     }
 
-    const images = new Map();
-    files.slice(0, MAX_BULK_ROUNDS).forEach((file) => {
-      const number = getImageNumber(file);
-      if (number && !images.has(number)) images.set(number, file);
-    });
-    // Caso simple: 1 sola pregunta sin número -> usa la primera imagen tal cual.
-    const singleQuestion = questions.size === 1 && questions.has(1) && ![...files].some((f) => getImageNumber(f));
-    let pairs = [...questions.keys()]
-      .filter((number) => images.has(number))
-      .sort((a, b) => a - b)
-      .slice(0, MAX_BULK_ROUNDS);
-    if (singleQuestion) pairs = [1];
-    if (!pairs.length) {
-      setStatus("No hay coincidencias: revisa que el número del archivo y la pregunta sea igual.", false);
+    // El número de cada tarjeta lo asigna la APP según el ORDEN DE CARGA:
+    // pregunta 1 <-> 1ª imagen subida/seleccionada, pregunta 2 <-> 2ª, etc.
+    // El usuario no renombra nada. (Si todos los archivos ya traen número
+    // al inicio, se ordena numéricamente para respetar 1, 2, … 10.)
+    const files = orderFilesByLoad(rawFiles);
+    const numbers = [...questions.keys()].sort((a, b) => a - b);
+    const pairsCount = Math.min(numbers.length, files.length);
+    if (!pairsCount) {
+      setStatus("No hay imágenes para emparejar.", false);
       return 0;
     }
 
     saveBtn.disabled = true;
-    setStatus(`Preparando ${pairs.length} tarjeta${pairs.length === 1 ? "" : "s"}…`, false);
+    setStatus(`Preparando ${pairsCount} tarjeta${pairsCount === 1 ? "" : "s"}…`, false);
     const rounds = loadRounds();
     const infoText = infoInput.value.trim();
-    // Soluciones PDF: se emparejan por el número al inicio del nombre
-    // (1.solucion.pdf -> tarjeta #1), igual que imágenes y preguntas.
-    const pdfsByNumber = new Map();
-    // Solo se emparejan PDFs cuando el modo elegido es "Cargar PDF";
-    // en modo "Redactar" la solución es el texto escrito (info).
-    if (solutionMode === "pdf") {
-      stagedPdfs.forEach((file) => {
-        const n = getImageNumber(file);
-        if (n && !pdfsByNumber.has(n)) pdfsByNumber.set(n, file);
-      });
-    }
-    for (const number of pairs) {
-      const file = singleQuestion ? files[0] : images.get(number);
+    // Soluciones PDF: MISMA regla de orden de carga — el 1º PDF subido es la
+    // solución de la pregunta 1, el 2º de la 2… (si traen número, se ordena).
+    // Solo aplica en modo "Cargar PDF"; en "Redactar" la solución es el texto.
+    const pdfs = solutionMode === "pdf" ? orderFilesByLoad(stagedPdfs) : [];
+    for (let i = 0; i < pairsCount; i++) {
+      const number = numbers[i];
+      const file = files[i]; // posición de carga; con 1 pregunta, la primera
       const imageId = `img-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
       await storeImage(imageId, file);
-      // PDF de solución de esta tarjeta (1 sola pregunta -> primer PDF del lote).
-      const solutionFile = singleQuestion ? (pdfsByNumber.get(1) || stagedPdfs[0]) : pdfsByNumber.get(number);
+      // PDF de solución de esta tarjeta (misma posición del lote).
+      const solutionFile = pdfs[i] || "";
       let solutionId = "";
       if (solutionFile) {
         solutionId = `pdf-${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 7)}`;
@@ -467,7 +509,7 @@
       rounds.push({
         id: `r${Date.now().toString(36)}-${number}-${Math.random().toString(36).slice(2, 6)}`,
         question: questions.get(number),
-        info: solutionMode === "write" ? infoText : (pairs.length === 1 ? infoText : ""),
+        info: solutionMode === "write" ? infoText : (pairsCount === 1 ? infoText : ""),
         imageId,
         imageName: file.name,
         solutionId,
@@ -477,11 +519,18 @@
       });
     }
     saveRounds(rounds);
-    setStatus(`✓ ${pairs.length} tarjeta${pairs.length === 1 ? " guardada" : "s guardadas"} en el EcoWheel.`, true);
+    const spare = files.length - pairsCount; // imágenes de sobra
+    const missing = numbers.length - pairsCount; // preguntas sin imagen
+    setStatus(
+      `✓ ${pairsCount} tarjeta${pairsCount === 1 ? " guardada" : "s guardadas"} en el EcoWheel.` +
+        (missing > 0 ? ` Faltaron ${missing} imagen${missing === 1 ? "" : "es"}: sube el resto y guarda esas preguntas.` : "") +
+        (spare > 0 ? ` (${spare} imagen${spare === 1 ? "" : "es"} extra sin pregunta.)` : ""),
+      true
+    );
     saveBtn.disabled = false;
     renderList();
     resetForm(); // limpia el formulario + lote unificado (equipo o Drive)
-    return pairs.length;
+    return pairsCount;
   }
 
   /* ------------------------------------------------------------------
@@ -653,16 +702,22 @@
       driveImportBtn.disabled = false;
       return;
     }
+    // Mismo criterio que en equipo: el número lo asigna el ORDEN, no el nombre.
+    // En Drive no existe "orden de subida": se ordena de forma natural por
+    // nombre (1, 2, … 10) y si TODOS traen número al inicio, ese número manda.
+    const ordered = orderFilesByLoad(driveFiles);
     const byNumber = new Map();
-    driveFiles.forEach((f) => {
+    ordered.forEach((f) => {
       const n = getImageNumber(f.name);
       if (n && !byNumber.has(n)) byNumber.set(n, f);
     });
-    // Igual que en equipo: 1 sola pregunta sin numeración usa la primera imagen.
-    const singleQuestion = questions.size === 1 && questions.has(1) && !driveFiles.some((f) => getImageNumber(f));
-    const pairs = singleQuestion ? [1] : [...questions.keys()].filter((n) => byNumber.has(n)).sort((a, b) => a - b).slice(0, MAX_BULK_ROUNDS);
+    const driveNumbers = [...questions.keys()].sort((a, b) => a - b);
+    const allNumbered = ordered.length > 0 && ordered.every((f) => getImageNumber(f.name) !== null);
+    const pairs = allNumbered
+      ? driveNumbers.filter((n) => byNumber.has(n)).slice(0, MAX_BULK_ROUNDS)
+      : driveNumbers.slice(0, Math.min(driveNumbers.length, ordered.length, MAX_BULK_ROUNDS));
     if (!pairs.length) {
-      driveStatus.textContent = "Sin coincidencias: el archivo debe empezar con el número de la pregunta (1.imagenrm.jpg ↔ 1. Pregunta).";
+      driveStatus.textContent = "No encontré imágenes para emparejar. Revisa que la carpeta de Drive contenga imágenes.";
       driveImportBtn.disabled = false;
       return;
     }
@@ -675,8 +730,9 @@
     }
     const rounds = loadRounds();
     let ok = 0;
-    for (const number of pairs) {
-      const f = singleQuestion ? driveFiles[0] : byNumber.get(number);
+    for (let i = 0; i < pairs.length; i++) {
+      const number = pairs[i];
+      const f = allNumbered ? byNumber.get(number) : ordered[i];
       try {
         const blob = await downloadDriveBlob(f);
         const ext = (f.name.split(".").pop() || "jpg").slice(0, 5);
@@ -699,7 +755,7 @@
     saveRounds(rounds);
     renderList();
     driveStatus.textContent = ok
-      ? `✓ ${ok} pares desde Drive cargados en el EcoWheel (numeración 1., 2., 3. intacta).`
+      ? `✓ ${ok} pares desde Drive cargados en el EcoWheel (orden respetado).`
       : "No se pudo descargar ninguna imagen de Drive. Revisa permisos de la carpeta.";
     driveImportBtn.disabled = false;
   }

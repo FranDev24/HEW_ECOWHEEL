@@ -7,7 +7,7 @@
 <meta name="description" content="Sube las imágenes y preguntas que aparecerán en el wheel de Ecowheel." />
 <meta name="theme-color" content="#040405" />
 <link rel="stylesheet" href="style.css?v=20260914-fixhint4" />
-<link rel="stylesheet" href="admin.css?v=20260914-16" />
+<link rel="stylesheet" href="admin.css?v=20260914-17" />
 </head>
 <body class="admin-body">
 <script>
@@ -54,7 +54,7 @@ try{var t=localStorage.getItem("ecowheel-theme")||"night";document.body.classLis
             placeholder="Escribe 1 pregunta… o pega la lista: 1. Primera pregunta  2. Segunda pregunta"
             autocomplete="off"
           ></textarea>
-          <p class="inline-help">Si pegas lista numerada (<strong>1. … 2. …</strong>) cada número se empareja con la imagen del mismo número (<strong>1.jpg, 2.png…</strong>). Si es una sola pregunta, se usa la primera imagen.</p>
+          <p class="inline-help">Sin renombrar archivos: sube o arrastra el paquete y la app numera sola. La <strong>1ª imagen que subas</strong> es la <strong>1</strong>, la 2ª la <strong>2</strong>… y cada número se empareja con su pregunta. Si es una sola pregunta, se usa la primera imagen.</p>
 
           <label class="field-label" for="dropzone">Imágenes del wheel (equipo o Drive)</label>
           <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Subir imágenes: clic o arrastrar">
@@ -63,7 +63,7 @@ try{var t=localStorage.getItem("ecowheel-theme")||"night";document.body.classLis
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 8 5-4 5 4"/><path d="M4 15v4h16v-4"/></svg>
             </div>
             <p class="dropzone-title">Arrastra tus imágenes aquí o explora archivos</p>
-            <p class="dropzone-hint">PNG · JPG · WEBP · Máx 250 · Se previsualizan abajo automáticamente</p>
+            <p class="dropzone-hint">PNG · JPG · WEBP · Máx 250 · Se numeran solas según el orden en que las subas</p>
             <p id="file-count" class="bulk-file-count" aria-live="polite" hidden></p>
           </div>
           <div id="thumb-strip" class="thumb-strip thumb-strip--contain" hidden></div>
@@ -92,18 +92,18 @@ try{var t=localStorage.getItem("ecowheel-theme")||"night";document.body.classLis
           </div>
 
           <div id="block-pdf">
-            <label class="field-label" for="pdf-dropzone">Soluciones en PDF <span class="field-optional">(numeradas)</span></label>
+            <label class="field-label" for="pdf-dropzone">Soluciones en PDF <span class="field-optional">(en orden)</span></label>
             <div id="pdf-dropzone" class="dropzone dropzone--pdf" tabindex="0" role="button" aria-label="Subir PDF de soluciones: clic o arrastrar">
               <input id="pdf-input" type="file" accept="application/pdf,.pdf" multiple hidden />
               <div class="dropzone-icon">
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-4-4Z"/><path d="M14 3v4h4"/></svg>
               </div>
               <p class="dropzone-title">Arrastra los PDF de solución o explora archivos</p>
-              <p class="dropzone-hint">PDF · Numerados igual que imágenes y preguntas: 1.solucion.pdf, 2.…</p>
+              <p class="dropzone-hint">PDF · Se numeran solas por orden de carga: el 1º PDF será la solución #1</p>
               <p id="pdf-count" class="bulk-file-count" aria-live="polite" hidden></p>
             </div>
             <div id="pdf-strip" class="thumb-strip pdf-strip" hidden></div>
-            <p class="inline-help">El número al inicio del nombre del PDF (<strong>1.solucion.pdf, 2.…</strong>) lo conecta con la pregunta e imagen del mismo número. En el wheel, al <strong>tocar la imagen</strong> del resultado se activa la precesión y se abre esa solución.</p>
+            <p class="inline-help">Sube los PDF en el mismo orden de las preguntas: el <strong>1º PDF</strong> es la solución de la <strong>pregunta 1</strong>, el 2º de la 2… (si los nombres ya traen número, también se respeta). En el wheel, al <strong>tocar la imagen</strong> del resultado se activa la precesión y se abre esa solución.</p>
           </div>
 
           <button type="submit" id="save-btn" class="save-btn">
@@ -117,7 +117,7 @@ try{var t=localStorage.getItem("ecowheel-theme")||"night";document.body.classLis
         <details class="drive-fold" id="drive-fold">
           <summary class="drive-fold-summary"><span>Importar desde Google Drive</span><span class="drive-fold-hint">Carpeta pública o privada</span></summary>
           <div class="drive-fold-body">
-          <p class="bulk-help">Pega el enlace de una <strong>carpeta pública de Drive</strong> (Cualquiera con el enlace puede ver). Las imágenes se emparejan por el número al inicio del nombre: <strong>1.imagenrm.jpg</strong>, <strong>2.cualquier-nombre.png</strong>. Solo se pide autorización de Google si la carpeta es privada.</p>
+          <p class="bulk-help">Pega el enlace de una <strong>carpeta pública de Drive</strong> (Cualquiera con el enlace puede ver). Las imágenes se emparejan por orden natural del nombre (1, 2, … 10); si los nombres traen número al inicio, ese número manda: <strong>1.imagenrm.jpg</strong>, <strong>2.cualquier-nombre.png</strong>. Solo se pide autorización de Google si la carpeta es privada.</p>
           <label class="field-label" for="drive-link-input">Enlace de carpeta Drive</label>
           <input id="drive-link-input" class="field-input" type="url" inputmode="url" placeholder="https://drive.google.com/drive/folders/ABC123…" autocomplete="off" />
           <label class="check-row"><input id="drive-save-link" type="checkbox" checked /> Guardar este enlace como predeterminado (se vuelve a conectar solo cada vez)</label>
@@ -166,6 +166,6 @@ try{var t=localStorage.getItem("ecowheel-theme")||"night";document.body.classLis
     </div>
   </main>
 
-  <script src="admin.js?v=20260914-16"></script>
+  <script src="admin.js?v=20260914-17"></script>
 </body>
 </html>

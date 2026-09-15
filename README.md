@@ -13,7 +13,7 @@
 - Sin frameworks ni proceso de compilación.
 - Responsive para móvil, tablet y escritorio.
 - Juego sin repetición dentro de cada ciclo de preguntas.
-- Carga masiva de hasta 250 pares numerados.
+- Carga masiva de hasta 250 pares: la app numera las imágenes por orden de carga (sin renombrar archivos).
 
 Ruleta / juego de azar con una interfaz inspirada en el **Liquid Glass** de iPhone
 18 Pro, reinterpretado como **Heliomorfismo**: el vidrio se comporta como el
@@ -42,16 +42,20 @@ Ya no hace falta editar `config.js` a mano: abre **`admin.html`** en el
 navegador para:
 
 - Escribir la pregunta que aparecerá en el wheel.
-- Arrastrar o seleccionar hasta 8 imágenes.
+- Arrastrar o seleccionar hasta 250 imágenes (se numeran solas según el orden de carga).
 - Escribir una respuesta / info adicional opcional que se revela al tocar
   **"Aprender más"**.
 - Ver una vista previa en vivo idéntica a la identidad visual del wheel.
 - Editar o eliminar preguntas ya guardadas desde la lista inferior.
 - Pegar hasta 250 preguntas desde Word con formato `1. Pregunta`.
-- Cargar hasta 250 imágenes cuyos nombres comiencen con el mismo consecutivo:
-  `1.jpg`, `2.png`, `3.webp`.
+- Cargar hasta 250 imágenes en lote, con cualquier nombre: la app las numera
+  automáticamente según el orden en que se suben o seleccionan (la 1ª imagen
+  = tarjeta 1). Si los archivos ya traen número al inicio (`1.jpg`, `2.png`…),
+  ese orden numérico se respeta.
 
-El panel empareja cada imagen y pregunta por su número. Las imágenes masivas se
+El panel empareja cada pregunta con la imagen de su posición de carga y muestra
+el número asignado en cada miniatura (con botones ‹ › para corregir el orden
+sin renombrar nada). Las imágenes masivas se
 guardan en IndexedDB para evitar el límite de tamaño de `localStorage`.
 
 El contenido se guarda en el `localStorage` del navegador bajo la clave
